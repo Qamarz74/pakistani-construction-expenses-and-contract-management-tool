@@ -7,6 +7,7 @@
 - [x] 5. Settings/contacts: projects, work types, categories, units/conversions, item defaults and contacts/ledger. Verify historical snapshots survive master edits.
 - [x] 6. Dashboard/reports: nine reports, applicable filters, unit-aware weighted material totals and drilldowns. Verify real aggregates without double counting.
 - [x] 7. Final review: PHP lint, MySQL runtime, desktop/mobile browser checks, concise setup/login guide. Resolve findings; record any remaining limits here.
+- [x] 8. Hosted login session issue: isolate cookie from other PHP applications, scope it to install path, handle stale login forms and verify CSRF remains enforced. Fresh hosted sessions reach credential validation; original browser-specific cause remains unconfirmed. Local checks passed: dedicated cookie, login unaffected by unrelated PHPSESSID, authenticated stale login redirects, anonymous stale form rejected with refreshed CSRF. Temporary config/data removed; no automated tests added.
 
 ## Checkpoints
 - [x] Foundation and expense flow usable.
