@@ -23,6 +23,11 @@ if (!is_file($configFile)) {
     exit('Copy config.example.php to config.php, configure MySQL, import database/schema.sql and database/seed.sql, then run php setup.php admin.');
 }
 $config = require $configFile;
+function contact_types(): array
+{
+    return ['Supplier','Contractor','Both','Labourer','Mason','Electrician','Plumber','Carpenter','Painter','Transporter','Other'];
+}
+
 function db(): PDO
 {
     static $pdo;

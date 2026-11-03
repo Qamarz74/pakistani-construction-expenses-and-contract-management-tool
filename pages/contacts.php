@@ -10,7 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $type = $_POST['type']??'';
     $notes = trim($_POST['notes']??'');
     if ($name===''||strlen($name)>150||strlen($phone)>50) throw new RuntimeException('Name required (maximum 150 characters); phone maximum 50 characters.');
-    if (!in_array($type,['Supplier','Contractor','Both'],true)) throw new RuntimeException('Invalid contact type.');
+    if (!in_array($type,contact_types(),true)) throw new RuntimeException('Invalid contact type.');
     if ($editId) {
         if (!one('SELECT id FROM contacts WHERE id=?',[$editId])) throw new RuntimeException('Contact not found.');
         run('UPDATE contacts SET name=?,phone=?,type=?,notes=? WHERE id=?',[$name,$phone,$type,$notes,$editId]);
@@ -27,12 +27,12 @@ $contact = $id ? one('SELECT * FROM contacts WHERE id=?',[$id]) : null;
 if ($id&&!$contact) throw new RuntimeException('Contact not found.');
 $contacts = rows('SELECT * FROM contacts ORDER BY name');
 ?>
-<h1 class="h3">Suppliers / Contractors</h1>
 <div class="row g-4"><div class="col-lg-4"><div class="card"><div class="card-body"><h2 class="h5"><?= $edit?'Edit contact':'Add contact' ?></h2>
 <form method="post"><?= csrf() ?><input type="hidden" name="id" value="<?= (int)($edit['id']??0) ?>">
 <label class="form-label" for="name">Name</label><input class="form-control mb-3" id="name" name="name" value="<?= e($edit['name']??'') ?>" required maxlength="150">
 <label class="form-label" for="phone">Phone</label><input class="form-control mb-3" id="phone" name="phone" type="tel" maxlength="50" value="<?= e($edit['phone']??'') ?>">
-<label class="form-label" for="type">Type</label><select class="form-select mb-3" id="type" name="type"><?php foreach (['Supplier','Contractor','Both'] as $type): ?><option <?= ($edit['type']??'Supplier')===$type?'selected':'' ?>><?= $type ?></option><?php endforeach ?></select>
+<label class="form-label" for="type">Person / business type</label><select class="form-select mb-3" id="type" name="type"><?php foreach (contact_types() as $type): ?><option value="<?= e($type) ?>" <?= ($edit['type']??'Supplier')===$type?'selected':'' ?>><?= e($type==='Both'?'Supplier & contractor':$type) ?></option><?php endforeach ?></select>
+<p class="small text-muted">Choose Other when none fit. Add their role or trade in Notes.</p>
 <label class="form-label" for="notes">Notes</label><textarea class="form-control mb-3" id="notes" name="notes"><?= e($edit['notes']??'') ?></textarea>
 <button class="btn btn-primary">Save contact</button> <?php if ($edit): ?><a class="btn btn-outline-secondary" href="index.php?page=contacts">Clear</a><?php endif ?>
 </form></div></div></div>

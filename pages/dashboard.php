@@ -40,6 +40,7 @@ $workBreakdown = rows("SELECT name,SUM(amount) amount FROM (SELECT t.name,SUM(l.
     <div><span>Materials</span><strong><?=money($kindTotals['material']??'0')?></strong><small>Materials purchased</small></div>
     <div><span>Labour &amp; Theka</span><strong><?=money($labour)?></strong><small>Approved work and labour</small></div>
 </section>
+<?php require __DIR__.'/dashboard-charts.php'; ?>
 <div class="db-activity-grid">
 <section class="db-activity" aria-labelledby="db-expenses-heading">
     <div class="db-section-heading"><div><span class="db-eyebrow">YOUR RECORDS</span><h2 id="db-expenses-heading">Recent expenses</h2></div><a class="db-text-link" href="index.php?page=expenses">View all<span class="db-sr-only"> expenses</span> <span aria-hidden="true">↗</span></a></div>

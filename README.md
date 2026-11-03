@@ -8,6 +8,8 @@ Core PHP 8.2+, MySQL 8+, PDO MySQL, BCMath, Fileinfo and Mbstring. Bootstrap 5 l
 4. From the project directory run `php setup.php admin`, then enter a password of at least 12 characters. This creates the single admin; no default password or public installer exists. On hosting without a terminal, run this CLI command locally against that database, then remove local database credentials.
 5. Upload the application including its `.htaccess` files; exclude `.git/`. Use HTTPS. Apache must honor `.htaccess`: direct access to `app/`, `pages/`, `storage/`, `database/`, `tasks/`, `config.php` and `setup.php` must be denied. For Nginx or another server, configure the same denials explicitly before use. Point the browser to `index.php` and log in with the username/password from step 4.
 
+Existing installations: import `database/upgrade-contact-types.sql` before using expanded contact types. Existing contacts are preserved. Import `database/upgrade-miscellaneous-item.sql` to split Loading (Trip) from Miscellaneous / Other (Piece); saved purchases are preserved.
+
 For local use: `php -S 127.0.0.1:8080 router.php`, then open http://127.0.0.1:8080. Always include `router.php` so private files cannot be served directly.
 
 Select a project, add contacts, then use **Add expense**. Bricks default to rates per 1,000 pieces; Sariya uses Mann (40 kg). Configure other units/conversions under Settings; variable trolley/dumper capacities never convert automatically. Saved purchases retain their original units and rates.

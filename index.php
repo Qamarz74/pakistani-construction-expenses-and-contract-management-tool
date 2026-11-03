@@ -74,7 +74,7 @@ try {
     error_log((string)$ex);
     $error = $ex instanceof PDOException ? 'Database operation failed. Check configuration and server logs.' : $ex->getMessage();
 }
-$titles = ['dashboard' => 'Dashboard', 'expenses' => 'Expenses', 'payments' => 'Payments', 'contracts' => 'Thekas', 'contacts' => 'Suppliers / Contractors', 'reports' => 'Reports', 'settings' => 'Settings', 'login' => 'Login'];
+$titles = ['dashboard' => 'Dashboard', 'expenses' => 'Expenses', 'payments' => 'Payments', 'contracts' => 'Thekas', 'contacts' => 'Contacts', 'reports' => 'Reports', 'settings' => 'Settings', 'login' => 'Login'];
 if (!isset($titles[$page])) {
     http_response_code(404);
     $page = 'dashboard';
@@ -136,8 +136,9 @@ $navLabels = ['dashboard'=>'Overview','expenses'=>'Expenses','payments'=>'Paymen
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="assets/tom-select.css" rel="stylesheet">
     <link href="assets/app.css?v=<?=filemtime(__DIR__.'/assets/app.css')?>" rel="stylesheet">
-    <?php if(in_array($page,['dashboard','expenses'],true) && is_file(__DIR__.'/assets/'.$page.'.css')): ?><link href="assets/<?=e($page)?>.css?v=<?=filemtime(__DIR__.'/assets/'.$page.'.css')?>" rel="stylesheet"><?php endif; ?>
+    <?php if(in_array($page,['dashboard','expenses','reports'],true) && is_file(__DIR__.'/assets/'.$page.'.css')): ?><link href="assets/<?=e($page)?>.css?v=<?=filemtime(__DIR__.'/assets/'.$page.'.css')?>" rel="stylesheet"><?php endif; ?>
     <link href="assets/searchable-selects.css?v=<?=filemtime(__DIR__.'/assets/searchable-selects.css')?>" rel="stylesheet">
+    <?php if($page==='reports'): ?><script src="assets/reports.js?v=<?=filemtime(__DIR__.'/assets/reports.js')?>" defer></script><?php endif; ?>
     <script src="assets/tom-select.js" defer></script>
     <script src="assets/searchable-selects.js?v=<?=filemtime(__DIR__.'/assets/searchable-selects.js')?>" defer></script>
 </head>

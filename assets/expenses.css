@@ -9,3 +9,5 @@
 @media(max-width:820px){.ef-recent-button{font-size:14px;min-height:40px}.ef-remove,.ef-options summary{font-size:14px;min-height:44px}.ef-check{font-size:13px;min-height:44px}.ef-payment-choices span{font-size:14px}.ef-options summary{display:flex;align-items:center;gap:5px}.ef-options summary::before{content:'▸';font-size:10px}.ef-options[open] summary::before{content:'▾'}}
 .ef-form .form-control,.ef-form .form-select{font-size:15px}.ef-recent-button,.ef-remove,.ef-payment-choices span{font-size:14px}.ef-check,.ef-options summary{font-size:13px}
 @media(max-width:820px){.ef-form .form-control,.ef-form .form-select{font-size:16px}.ef-options summary{font-size:14px}}
+
+.ef-description-field{grid-column:1/-1}

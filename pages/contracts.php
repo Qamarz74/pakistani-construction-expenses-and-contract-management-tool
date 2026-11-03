@@ -12,7 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $title = trim($_POST['title'] ?? '');
             if ($title==='' || mb_strlen($title)>180) throw new RuntimeException('Contract title is required (maximum 180 characters).');
             $contact = (int)($_POST['contact_id'] ?? 0); $work = (int)($_POST['work_type_id'] ?? 0);
-            if (!one("SELECT id FROM contacts WHERE id=? AND type IN ('Contractor','Both')",[$contact])) throw new RuntimeException('Select a contractor contact.');
+            if (!one("SELECT id FROM contacts WHERE id=? AND type <> 'Supplier'",[$contact])) throw new RuntimeException('Select a contractor contact.');
             if (!one('SELECT id FROM work_types WHERE id=? AND (active=1 OR id=?)',[$work,$contract['work_type_id']??0])) throw new RuntimeException('Select an active work type.');
             $date = valid_date($_POST['contract_date'] ?? '');
             $type = $_POST['type'] ?? 'fixed';
@@ -80,7 +80,7 @@ $paid=one('SELECT COALESCE(SUM(amount),0) amount FROM payment_allocations WHERE 
 <?php endif; ?>
 <?php if($showForm):
 $form=$error && $action==='save'?$_POST:($editing?:[]);
-$contacts=rows("SELECT * FROM contacts WHERE type IN ('Contractor','Both') ORDER BY name"); $works=rows('SELECT * FROM work_types WHERE active=1 OR id=? ORDER BY name',[$editing['work_type_id']??0]); $units=rows('SELECT * FROM units WHERE active=1 OR id=? ORDER BY name',[$editing['unit_id']??0]);
+$contacts=rows("SELECT * FROM contacts WHERE type <> 'Supplier' ORDER BY name"); $works=rows('SELECT * FROM work_types WHERE active=1 OR id=? ORDER BY name',[$editing['work_type_id']??0]); $units=rows('SELECT * FROM units WHERE active=1 OR id=? ORDER BY name',[$editing['unit_id']??0]);
 ?>
 <div class="card mb-3"><div class="card-body"><h2 class="h5"><?=$editing?'Edit / adjust contract':'New contract'?></h2><form method="post"><?=csrf()?><input type="hidden" name="action" value="save"><input type="hidden" name="id" value="<?=e($form['id']??0)?>"><div class="row g-3"><div class="col-12 col-md-6"><label class="form-label d-block">Title<input required maxlength="180" class="form-control" name="title" value="<?=e($form['title']??'')?>"></label></div><div class="col-6 col-md-3"><label class="form-label d-block">Contract date<input required type="date" class="form-control" name="contract_date" value="<?=e($form['contract_date']??date('Y-m-d'))?>"></label></div><div class="col-6 col-md-3"><label class="form-label d-block">Status<select name="status" class="form-select"><?php foreach(['Active','Completed','Cancelled'] as $status): ?><option <?=($form['status']??'Active')===$status?'selected':''?>><?=$status?></option><?php endforeach; ?></select></label></div><div class="col-12 col-md-6"><label class="form-label d-block">Contractor<select class="form-select" required name="contact_id"><option value="">Select contractor</option><?=options($contacts,$form['contact_id']??null)?></select></label><a href="?page=contacts">Manage contacts</a></div><div class="col-12 col-md-6"><label class="form-label d-block">Work type<select required class="form-select" name="work_type_id"><?=options($works,$form['work_type_id']??null)?></select></label></div>
 <div class="col-12"><label class="form-label d-block">Description<textarea class="form-control" name="description" rows="2"><?=e($form['description']??'')?></textarea></label></div>
