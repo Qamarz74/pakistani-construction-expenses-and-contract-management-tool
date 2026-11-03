@@ -18,6 +18,15 @@ Foundation → expenses → payments → contracts → master data/contacts → 
 ## Resume
 Read `tasks/todo.md`, then `tasks/brief.md`. Preserve completed modules; resume first unchecked task. Update checklist and continuation notes after each slice.
 
+## UI/UX redesign — 3 November 2026
+User now authorizes custom design without the original Bootstrap-only visual restriction. Begin with Dashboard and Add/Edit Expense plus the shared navigation needed by those screens. Keep core PHP/MySQL and existing financial rules. No new product features or automated tests requested.
+
+- Custom mobile-first finance interface: ink/stone surfaces, green primary actions, clear typography and compact navigation.
+- Dashboard: lead with spent/paid/owed, one Add Expense action, understandable advances, recent records, secondary breakdowns.
+- Expense: choose item, enter quantity and supplier's quoted price. Use market defaults and compatible units; explain calculations in plain language. Advanced pricing/category controls stay available behind disclosure. Optional notes/bill and payment details reveal as needed.
+- Parallel ownership: root shared shell/CSS and integration; expense agent expense page/JS/scoped CSS; dashboard agent dashboard page/scoped CSS. Review after integration.
+- Verify locally with disposable database and browser. Preserve server-side calculations, project/CSRF guards, snapshots and allocations. Deployment requires separate hosted verification.
+
 ## Risks
 - Local MySQL initially unavailable; start isolated temporary instance for live checks if needed.
 - No automated tests per explicit brief. Use PHP lint, real MySQL and manual browser/HTTP checks without adding test files.

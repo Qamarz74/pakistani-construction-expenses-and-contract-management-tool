@@ -10,7 +10,7 @@ Core PHP 8.2+, MySQL 8+, PDO MySQL, BCMath, Fileinfo and Mbstring. Bootstrap 5 l
 
 For local use: `php -S 127.0.0.1:8080 router.php`, then open http://127.0.0.1:8080. Always include `router.php` so private files cannot be served directly.
 
-Select a project, add contacts, then use **Quick Add Expense**. Bricks default to rates per 1,000 pieces; Sariya uses Mann (40 kg). Configure other units/conversions under Settings; variable trolley/dumper capacities never convert automatically. Saved purchases retain their original units and rates.
+Select a project, add contacts, then use **Add expense**. Bricks default to rates per 1,000 pieces; Sariya uses Mann (40 kg). Configure other units/conversions under Settings; variable trolley/dumper capacities never convert automatically. Saved purchases retain their original units and rates.
 
 Record advances once under Payments, then apply them from payment details. Thekas count as expense only when completed/approved work cost is recorded. Cancelling a purchase releases its allocations; the payments remain as advances. Contract cancellation preserves approved costs and payment history. Reports use purchase/work dates for expenses and payment dates for cash; period balances are explained on the report.
 

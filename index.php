@@ -100,46 +100,76 @@ if (!$error && $page !== 'login' && !empty($_SESSION['user_id'])) {
         $content = '<a class="btn btn-outline-secondary" href="' . e($_SERVER['REQUEST_URI']) . '">Reload page</a>';
     }
 }
+$authenticated = !empty($_SESSION['user_id']);
+$expenseForm = $page === 'expenses' && (isset($_GET['add']) || isset($_GET['edit']) || ($_POST['action'] ?? '') === 'save');
+$heading = $expenseForm ? ((int)($_GET['edit'] ?? $_POST['id'] ?? 0) ? 'Edit expense' : 'Add expense') : $titles[$page];
+$introductions = ['dashboard' => 'Your home, one clear picture.', 'expenses' => $expenseForm ? 'What did you buy? Enter the quantity and the price on your bill.' : 'Your purchases, payments and bills in one place.'];
+$projects = $authenticated && !$error ? rows('SELECT id,name FROM projects WHERE active=1 ORDER BY name') : [];
+$projectName = $project['name'] ?? 'Select a project';
+function ui_icon(string $name): string {
+    $paths = [
+        'home' => '<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z"/><path d="M9 21v-8h6v8"/>',
+        'dashboard' => '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+        'expenses' => '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2Z"/><path d="M9 7h6M9 11h6M9 15h3"/>',
+        'payments' => '<rect x="3" y="5" width="18" height="15" rx="2"/><path d="M3 9h18M7 15h4"/>',
+        'contracts' => '<rect x="3" y="7" width="18" height="14" rx="2"/><path d="M8 7V3h8v4M3 12h18M10 12v3h4v-3"/>',
+        'contacts' => '<circle cx="9" cy="8" r="3"/><path d="M3 21v-3a6 6 0 0 1 12 0v3M16 5a3 3 0 0 1 0 6M21 21v-3a6 6 0 0 0-3-5"/>',
+        'reports' => '<path d="M4 3v18h17M9 17v-4M14 17V8M19 17V4"/>',
+        'settings' => '<path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3" fill="currentColor"/><circle cx="15" cy="17" r="3" fill="currentColor"/>',
+        'logout' => '<path d="M9 4H4v16h5M9 12h12m-4-4 4 4-4 4"/>',
+        'plus' => '<path d="M12 5v14M5 12h14"/>',
+        'chevron' => '<path d="m6 9 6 6 6-6"/>',
+        'back' => '<path d="m10 5-7 7 7 7M3 12h18"/>',
+        'menu' => '<path d="M4 6h16M4 12h16M4 18h16"/>',
+    ];
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">'.($paths[$name] ?? $paths['home']).'</svg>';
+}
+$navLabels = ['dashboard'=>'Overview','expenses'=>'Expenses','payments'=>'Payments','contracts'=>'Thekas','contacts'=>'People','reports'=>'Reports','settings'=>'Settings'];
 ?>
 <!doctype html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title><?= e($titles[$page]) ?> · Home Construction</title>
+    <meta name="theme-color" content="#17634d">
+    <title><?=e($heading)?> · Home Construction</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="assets/app.css" rel="stylesheet">
+    <link href="assets/app.css?v=<?=filemtime(__DIR__.'/assets/app.css')?>" rel="stylesheet">
+    <?php if(in_array($page,['dashboard','expenses'],true) && is_file(__DIR__.'/assets/'.$page.'.css')): ?><link href="assets/<?=e($page)?>.css?v=<?=filemtime(__DIR__.'/assets/'.$page.'.css')?>" rel="stylesheet"><?php endif; ?>
 </head>
-
-<body class="bg-light">
-    <?php if (!empty($_SESSION['user_id'])): ?>
-        <nav class="navbar navbar-dark bg-dark navbar-expand-lg">
-            <div class="container-fluid"><a class="navbar-brand" href="index.php">Home Construction</a><button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-controls="nav" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>
-                <div class="collapse navbar-collapse" id="nav">
-                    <ul class="navbar-nav me-auto"><?php foreach ($titles as $key => $title): if ($key === 'login') continue; ?><li class="nav-item"><a class="nav-link <?= $page === $key ? 'active' : '' ?>" href="index.php?page=<?= e($key) ?>"><?= e($title) ?></a></li><?php endforeach; ?></ul>
-                    <form method="post" action="index.php?page=logout"><?= csrf() ?><button class="btn btn-outline-light btn-sm">Logout</button></form>
-                </div>
-            </div>
-        </nav>
-    <?php endif; ?>
-    <main class="container-xl py-3">
-        <?php if (!empty($_SESSION['user_id'])): ?><div class="d-flex flex-wrap justify-content-between gap-3 align-items-center mb-3">
-                <h1 class="h3 m-0"><?= e($titles[$page]) ?></h1>
-                <form method="post" action="index.php?page=switch" class="d-flex gap-2 align-items-center"><?= csrf() ?><label for="project-switch">Project</label><select id="project-switch" name="project_id" class="form-select" style="max-width:230px"><?= options($error ? [] : rows('SELECT id,name FROM projects WHERE active=1 ORDER BY name'), project_id()) ?></select><button class="btn btn-outline-primary">Select</button></form>
-            </div><?php endif; ?>
-        <?php foreach ($_SESSION['flash'] ?? [] as [$message, $type]): ?><div class="alert alert-<?= e(in_array($type, ['success', 'warning', 'danger', 'info'], true) ? $type : 'info') ?>" role="status"><?= e($message) ?></div><?php endforeach;
-                                                                                                                                                                                                                                unset($_SESSION['flash']); ?>
-        <?php if ($error): ?><div class="alert alert-danger" role="alert"><?= e($error) ?></div><?php endif; ?>
-        <?php if ($page === 'login'): ?><div class="card mx-auto mt-4" style="max-width:420px">
-                <div class="card-body">
-                    <h1 class="h4">Home Construction</h1>
-                    <p class="text-muted">Private expense tracker</p>
-                    <form method="post" action="index.php?page=login"><?= csrf() ?><label for="username" class="form-label">Username</label><input id="username" class="form-control mb-3" name="username" autocomplete="username" required autofocus><label for="password" class="form-label">Password</label><input id="password" type="password" class="form-control mb-3" name="password" autocomplete="current-password" required><button class="btn btn-primary w-100">Log in</button></form>
-                </div>
-            </div><?php else: ?><?= $content ?><?php endif; ?>
-    </main>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<body class="app-body page-<?=e($page)?>">
+<a class="skip-link" href="#main-content">Skip to content</a>
+<?php if($authenticated): ?>
+<div class="workspace-shell">
+    <aside class="workspace-sidebar" aria-label="Main navigation">
+        <a class="app-brand" href="index.php"><span class="brand-mark"><?=ui_icon('home')?></span><span>Home<span class="brand-subtitle">CONSTRUCTION</span></span></a>
+        <span class="nav-caption">YOUR WORKSPACE</span>
+        <nav class="workspace-nav" aria-label="Main"><?php foreach($navLabels as $key=>$label): ?><a class="nav-destination <?=$page===$key?'is-active':''?>" href="index.php?page=<?=e($key)?>" <?=$page===$key?'aria-current="page"':''?>><?=ui_icon($key)?><span><?=e($label)?></span></a><?php endforeach; ?></nav>
+        <div class="sidebar-bottom"><div class="private-note"><span class="private-dot"></span> Your private construction ledger</div><form method="post" action="index.php?page=logout"><?=csrf()?><button class="sidebar-logout"><?=ui_icon('logout')?>Log out</button></form></div>
+    </aside>
+    <div class="workspace-main">
+        <header class="workspace-topbar">
+            <a class="mobile-brand" href="index.php"><span class="brand-mark"><?=ui_icon('home')?></span><span>Home Construction</span></a>
+            <details class="project-picker"><summary><span class="project-dot"></span><span class="project-picker-name"><?=e($projectName)?></span><?=ui_icon('chevron')?></summary><div class="project-popover"><form method="post" action="index.php?page=switch"><?=csrf()?><label for="project-switch">Working on</label><select id="project-switch" name="project_id" class="form-select"><?=options($projects,project_id())?></select><button class="btn btn-primary w-100 mt-3">Use this project</button></form><a href="index.php?page=settings&tab=projects">Manage projects</a></div></details>
+            <span class="topbar-date"><?=e(date('l, j F Y'))?></span>
+            <details class="mobile-menu"><summary aria-label="Open navigation"><?=ui_icon('menu')?></summary><nav class="mobile-menu-panel" aria-label="More navigation"><?php foreach($navLabels as $key=>$label): ?><a class="nav-destination <?=$page===$key?'is-active':''?>" href="index.php?page=<?=e($key)?>" <?=$page===$key?'aria-current="page"':''?>><?=ui_icon($key)?><?=e($label)?></a><?php endforeach; ?><form method="post" action="index.php?page=logout"><?=csrf()?><button class="sidebar-logout"><?=ui_icon('logout')?>Log out</button></form></nav></details>
+        </header>
+        <main id="main-content" class="workspace-content" tabindex="-1">
+            <div class="page-heading"><?php if($expenseForm): ?><a class="back-link" href="index.php?page=expenses"><?=ui_icon('back')?>All expenses</a><?php else: ?><p class="page-eyebrow"><?=e($projectName)?></p><?php endif; ?><h1><?=e($heading)?></h1><?php if(isset($introductions[$page])): ?><p class="page-intro"><?=e($introductions[$page])?></p><?php endif; ?></div>
+<?php else: ?>
+<main id="main-content" class="login-layout" tabindex="-1">
+<?php endif; ?>
+<?php foreach($_SESSION['flash']??[] as [$message,$type]): ?><div class="alert alert-<?=e(in_array($type,['success','warning','danger','info'],true)?$type:'info')?>" role="status"><?=e($message)?></div><?php endforeach; unset($_SESSION['flash']); ?>
+<?php if($error): ?><div class="alert alert-danger" role="alert"><?=e($error)?></div><?php endif; ?>
+<?php if($page==='login'): ?>
+    <div class="login-panel"><span class="brand-mark"><?=ui_icon('home')?></span><h1>Welcome home.</h1><p class="text-muted">Your construction expenses, all in one place.</p><form method="post" action="index.php?page=login"><?=csrf()?><label for="username" class="form-label">Username</label><input id="username" class="form-control mb-3" name="username" autocomplete="username" required autofocus><label for="password" class="form-label">Password</label><input id="password" type="password" class="form-control mb-4" name="password" autocomplete="current-password" required><button class="btn btn-primary w-100">Log in</button></form></div>
+<?php else: ?><?=$content?><?php endif; ?>
+</main>
+<?php if($authenticated): ?>
+    </div>
+</div>
+<nav class="mobile-shortcuts" aria-label="Quick navigation"><?php foreach(['dashboard'=>['Overview','dashboard'],'expenses'=>['Add expense','plus'],'payments'=>['Payments','payments'],'reports'=>['Reports','reports']] as $key=>[$label,$icon]): $active=$page===$key && ($key!=='expenses'||$expenseForm); ?><a href="index.php?page=<?=e($key)?><?=$key==='expenses'?'&add=1':''?>" class="<?=$active?'is-active':''?>" <?=$active?'aria-current="page"':''?>><?=ui_icon($icon)?><span><?=e($label)?></span></a><?php endforeach; ?></nav>
+<?php endif; ?>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
-
 </html>

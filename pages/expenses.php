@@ -1,7 +1,7 @@
 <?php
 $pid = project_id();
 $action = $_POST['action'] ?? '';
-$error = null;
+$expenseError = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_post_csrf();
     try {
@@ -91,17 +91,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (db()->inTransaction()) db()->rollBack();
         cleanup_failed_uploads();
         if ($ex instanceof PDOException) error_log((string)$ex);
-        $error = $ex instanceof PDOException ? 'Database operation failed. No changes were saved.' : $ex->getMessage();
+        $expenseError = $ex instanceof PDOException ? 'Database operation failed. No changes were saved.' : $ex->getMessage();
     }
 }
 $viewId = (int)($_GET['view'] ?? $_GET['id'] ?? 0);
 $editId = (int)($_GET['edit'] ?? 0);
 $editing = $editId ? one('SELECT * FROM expenses WHERE id=? AND project_id=?', [$editId,$pid]) : null;
 if ($editId && !$editing) throw new RuntimeException('Expense not found.');
-$showForm = isset($_GET['add']) || $editing || ($error && $action === 'save');
+$showForm = isset($_GET['add']) || $editing || ($expenseError && $action === 'save');
 ?>
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3"><h1 class="h3 mb-0">Expenses</h1><a class="btn btn-primary" href="?page=expenses&add=1">Add expense</a></div>
-<?php if ($error): ?><div class="alert alert-danger" role="alert"><?=e($error)?></div><?php endif; ?>
+
+<?php if (!$showForm): ?><div class="ef-list-actions"><a class="btn btn-primary" href="?page=expenses&add=1">Add expense</a></div><?php endif; ?>
+<?php if ($expenseError): ?><div class="alert alert-danger" role="alert" tabindex="-1"><?=e($expenseError)?></div><?php endif; ?>
 <?php if ($viewId):
 $expense = one('SELECT e.*, c.name contact_name FROM expenses e LEFT JOIN contacts c ON c.id=e.contact_id WHERE e.id=? AND e.project_id=?',[$viewId,$pid]);
 if (!$expense) throw new RuntimeException('Expense not found.');
@@ -122,38 +123,71 @@ $recent = rows("SELECT ei.* FROM expense_items ei JOIN expenses ex ON ex.id=ei.e
 $lastRates = []; $recentItems = [];
 $activeItemIds = array_column(array_filter($items,static fn($item)=>(bool)$item['active']),'id');
 foreach ($recent as $r) if (in_array($r['item_id'],$activeItemIds) && !isset($lastRates[$r['item_id']])) { $lastRates[$r['item_id']]=$r; if(count($recentItems)<8)$recentItems[]=$r; }
-$form = $error && $action==='save' ? $_POST : ($editing ?: []);
-$formLines = $error && $action==='save' ? ($_POST['lines'] ?? []) : ($editing ? rows('SELECT *,id line_id FROM expense_items WHERE expense_id=? ORDER BY id',[$editId]) : []);
-if (!$formLines) $formLines = [['item_id'=>'','quantity'=>'1','rate'=>'0','rate_basis'=>'1']];
-$renderLine = static function($line,$index) use($items,$units,$works,$categories) {
+$form = $expenseError && $action==='save' ? $_POST : ($editing ?: []);
+$formLines = $expenseError && $action==='save' ? ($_POST['lines'] ?? []) : ($editing ? rows('SELECT *,id line_id FROM expense_items WHERE expense_id=? ORDER BY id',[$editId]) : []);
+if (!$formLines) $formLines = [['item_id'=>'','quantity'=>'1','rate'=>'','rate_basis'=>'1']];
+// Restore historical metadata from the database, including after an invalid submission.
+$snapshots = [];
+$editingExpenseId = (int)($form['id'] ?? 0);
+$editingExpense = $editingExpenseId ? one('SELECT id FROM expenses WHERE id=? AND project_id=?',[$editingExpenseId,$pid]) : null;
+if ($editingExpenseId && !$editingExpense) throw new RuntimeException('Expense not found in this project.');
+if ($editingExpense) {
+    foreach (rows('SELECT * FROM expense_items WHERE expense_id=?',[$editingExpenseId]) as $snapshot) $snapshots[$snapshot['id']] = $snapshot;
+}
+$alreadyPaid = $editingExpenseId ? one('SELECT COALESCE(SUM(amount),0) amount FROM payment_allocations WHERE expense_id=?',[$editingExpenseId])['amount'] : '0';
+$renderLine = static function($line,$index) use($items,$units,$works,$categories,$snapshots) {
+    $snapshot = $snapshots[(int)($line['line_id'] ?? 0)] ?? null;
     $choices = static fn($records,$preserved) => array_values(array_filter($records, static fn($r) => $r['active'] || (string)$r['id'] === (string)$preserved));
-    $historical = !empty($line['line_id']);
-    $itemChoices = $choices($items, $historical ? ($line['item_id'] ?? null) : null);
-    $workChoices = $choices($works, $historical ? ($line['work_type_id'] ?? null) : null);
-    $categoryChoices = $choices($categories, $historical ? ($line['category_id'] ?? null) : null);
-    $unitChoices = $choices($units, $historical ? ($line['unit_id'] ?? null) : null);
-    $rateUnitChoices = $choices($units, $historical ? ($line['rate_unit_id'] ?? null) : null);
+    $itemChoices = $choices($items, $snapshot['item_id'] ?? null);
+    $workChoices = $choices($works, $snapshot['work_type_id'] ?? null);
+    $categoryChoices = $choices($categories, $snapshot['category_id'] ?? null);
+    $unitChoices = $choices($units, $snapshot['unit_id'] ?? null);
+    $rateUnitChoices = $choices($units, $snapshot['rate_unit_id'] ?? null);
+    $lineUnits = $units;
+    if ($snapshot) foreach ($lineUnits as &$u) {
+        if ($u['id']==$snapshot['unit_id']) $u['name']=$snapshot['unit_name'];
+        if ($u['id']==$snapshot['rate_unit_id']) $u['name']=$snapshot['rate_unit_name'];
+    }
+    unset($u);
+    $unitChoices = $choices($lineUnits,$snapshot['unit_id']??null);
+    $rateUnitChoices = $choices($lineUnits,$snapshot['rate_unit_id']??null);
+    $uid = 'ef-line-' . $index;
+    $fixed = !empty($line['is_fixed']);
+    $basis = (float)($line['rate_basis'] ?? 1);
+    $rateUnit = '';
+    foreach ($rateUnitChoices as $unitOption) if ($unitOption['id']==($line['rate_unit_id']??0)) $rateUnit=$unitOption['name'];
+    $quotedLabel = $fixed ? 'Amount' : ($rateUnit ? 'Price per ' . ($basis==1?'':rtrim(rtrim(number_format($basis,4,'.',','),'0'),'.').' ') . $rateUnit : 'Supplier’s quoted price');
     ?>
-<div class="expense-line card mb-3"><div class="card-body"><input type="hidden" data-field="line_id" name="lines[<?=$index?>][line_id]" value="<?=e($line['line_id']??'')?>"><div class="row g-2">
-<div class="col-12 col-md-4"><label class="form-label">Item<select required class="form-select item-select" data-field="item_id" name="lines[<?=$index?>][item_id]"><option value="">Select item</option><?=options($itemChoices,$line['item_id']??null)?></select></label></div>
-<div class="col-6 col-md-4"><label class="form-label">Work type<select required class="form-select" data-field="work_type_id" name="lines[<?=$index?>][work_type_id]"><?=options($workChoices,$line['work_type_id']??null)?></select></label></div>
-<div class="col-6 col-md-4"><label class="form-label">Category<select required class="form-select" data-field="category_id" name="lines[<?=$index?>][category_id]"><?=options($categoryChoices,$line['category_id']??null)?></select></label></div>
-<div class="col-12"><label class="form-check"><input class="form-check-input fixed-check" type="checkbox" data-field="is_fixed" name="lines[<?=$index?>][is_fixed]" value="1" <?=!empty($line['is_fixed'])?'checked':''?>> Fixed amount (no quantity)</label></div>
-<div class="col-6 col-md-2 quantity-field"><label class="form-label">Quantity<input class="form-control" type="number" min="0.0001" step="0.0001" data-field="quantity" name="lines[<?=$index?>][quantity]" value="<?=e($line['quantity']??'1')?>"></label></div>
-<div class="col-6 col-md-2 quantity-field"><label class="form-label">Quantity unit<select class="form-select" data-field="unit_id" name="lines[<?=$index?>][unit_id]"><?=options($unitChoices,$line['unit_id']??null)?></select></label></div>
-<div class="col-6 col-md-2"><label class="form-label">Rate / fixed Rs.<input required class="form-control" type="number" min="0" step="0.01" data-field="rate" name="lines[<?=$index?>][rate]" value="<?=e($line['rate']??'0')?>"></label></div>
-<div class="col-6 col-md-2 quantity-field"><label class="form-label">Rate per quantity<input class="form-control" type="number" min="0.0001" step="0.0001" data-field="rate_basis" name="lines[<?=$index?>][rate_basis]" value="<?=e($line['rate_basis']??'1')?>"></label></div>
-<div class="col-6 col-md-2 quantity-field"><label class="form-label">Rate unit<select class="form-select" data-field="rate_unit_id" name="lines[<?=$index?>][rate_unit_id]"><?=options($rateUnitChoices,$line['rate_unit_id']??null)?></select></label></div>
-<div class="col-6 col-md-2 d-flex align-items-end"><button class="btn btn-outline-danger remove-line mb-3" type="button">Remove line</button></div></div><div class="line-total fw-semibold" aria-live="polite"></div><input type="hidden" class="snapshot-factor" value="<?=e($line['conversion_factor']??'')?>" data-from="<?=e($line['unit_id']??'')?>" data-to="<?=e($line['rate_unit_id']??'')?>"></div></div>
+<article class="ef-line expense-line" aria-labelledby="<?=$uid?>-title">
+    <div class="ef-line-head"><h3 id="<?=$uid?>-title"><span class="ef-line-number"><?=is_numeric($index)?(int)$index+1:'1'?></span> <span class="ef-line-title">Purchase item</span></h3><button class="ef-remove remove-line" type="button" aria-label="Remove this item">Remove</button></div>
+    <input type="hidden" data-field="line_id" name="lines[<?=$index?>][line_id]" value="<?=e($line['line_id']??'')?>">
+    <div class="ef-line-inputs">
+        <label class="ef-field ef-item-field" for="<?=$uid?>-item"><span>Item</span><select required id="<?=$uid?>-item" class="form-select item-select" data-field="item_id" name="lines[<?=$index?>][item_id]"><option value="">Choose material or service</option><?=options($itemChoices,$line['item_id']??null)?></select></label>
+        <div class="ef-quantity-group quantity-field"><label class="ef-field" for="<?=$uid?>-quantity"><span>Quantity</span><input class="form-control" id="<?=$uid?>-quantity" type="number" inputmode="decimal" min="0.0001" step="0.0001" data-field="quantity" name="lines[<?=$index?>][quantity]" value="<?=e($line['quantity']??'1')?>"></label><label class="ef-field" for="<?=$uid?>-unit"><span>Unit</span><select id="<?=$uid?>-unit" class="form-select" data-field="unit_id" name="lines[<?=$index?>][unit_id]"><?=options($unitChoices,$line['unit_id']??null)?></select></label></div>
+        <label class="ef-field ef-price-field" for="<?=$uid?>-rate"><span class="ef-price-label"><?=e($quotedLabel)?></span><div class="ef-money-input"><span aria-hidden="true">Rs.</span><input required class="form-control" id="<?=$uid?>-rate" type="number" inputmode="decimal" min="0" step="0.01" data-field="rate" name="lines[<?=$index?>][rate]" value="<?=e($line['rate']??'')?>"></div><small class="ef-rate-source"></small></label>
+        <label class="ef-field ef-work-field" for="<?=$uid?>-work"><span>Work type</span><select required id="<?=$uid?>-work" class="form-select" data-field="work_type_id" name="lines[<?=$index?>][work_type_id]"><?=options($workChoices,$line['work_type_id']??null)?></select></label>
+    </div>
+    <div class="ef-line-meta"><label class="ef-check"><input class="form-check-input fixed-check" type="checkbox" data-field="is_fixed" name="lines[<?=$index?>][is_fixed]" value="1" <?=$fixed?'checked':''?>> Fixed amount / service charge</label><details class="ef-options"><summary>More options</summary><div class="ef-options-content"><p class="ef-help">Change the supplier’s pricing basis only when their quote uses a different unit or quantity.</p><div class="ef-advanced-grid"><label class="ef-field" for="<?=$uid?>-basis"><span>Price covers this quantity</span><input id="<?=$uid?>-basis" class="form-control" type="number" inputmode="decimal" min="0.0001" step="0.0001" data-field="rate_basis" name="lines[<?=$index?>][rate_basis]" value="<?=e($line['rate_basis']??'1')?>"></label><label class="ef-field" for="<?=$uid?>-rate-unit"><span>Quoted price unit</span><select id="<?=$uid?>-rate-unit" class="form-select" data-field="rate_unit_id" name="lines[<?=$index?>][rate_unit_id]"><?=options($rateUnitChoices,$line['rate_unit_id']??null)?></select></label><label class="ef-field" for="<?=$uid?>-category"><span>Category</span><select required id="<?=$uid?>-category" class="form-select" data-field="category_id" name="lines[<?=$index?>][category_id]"><?=options($categoryChoices,$line['category_id']??null)?></select></label></div><label class="ef-check ef-all-units"><input class="form-check-input" type="checkbox" data-all-units> Show all quantity units</label><p class="ef-help">Only configured conversions are accepted. Trolley and dumper sizes are never assumed.</p></div></details></div>
+    <div class="ef-line-result" aria-live="polite"><span class="ef-equation">Choose an item to see the calculation.</span><div><span class="ef-total-caption">Line total</span><strong class="line-total">—</strong></div></div>
+    <p class="ef-line-error" role="status" hidden></p>
+    <input type="hidden" class="snapshot-factor" value="<?=e($snapshot['conversion_factor']??'')?>" data-from="<?=e($snapshot['unit_id']??'')?>" data-to="<?=e($snapshot['rate_unit_id']??'')?>">
+</article>
 <?php }; ?>
-<div class="card mb-3"><div class="card-body"><h2 class="h5"><?=$editing?'Edit purchase #'.e($editId):'Quick purchase'?></h2>
-<?php if($recentItems): ?><div class="mb-3">Recent items: <?php foreach($recentItems as $r): ?><button class="btn btn-sm btn-outline-secondary recent-item my-1" type="button" data-item="<?=e($r['item_id'])?>"><?=e($r['description'])?></button> <?php endforeach; ?></div><?php endif; ?>
-<form method="post" enctype="multipart/form-data" id="expense-form"><?=csrf()?><input type="hidden" name="action" value="save"><input type="hidden" name="id" value="<?=e($form['id']??0)?>"><div class="row g-2 mb-3"><div class="col-12 col-md-4"><label class="form-label">Expense date<input required class="form-control" type="date" name="expense_date" value="<?=e($form['expense_date']??date('Y-m-d'))?>"></label></div><div class="col-12 col-md-8"><label class="form-label">Supplier (optional)<select name="contact_id" class="form-select"><option value="">Not specified</option><?=options($contacts,$form['contact_id']??null)?></select></label></div></div>
-<div id="expense-lines"><?php foreach($formLines as $index=>$line)$renderLine($line,$index); ?></div><button class="btn btn-outline-secondary mb-3" id="add-line" type="button">Add another item</button><div class="h5" id="purchase-total" aria-live="polite"></div><p class="small text-muted">Preview only. Final totals calculated on server. Unit conversions require configured rules.</p>
-<?php if(!$editing && empty($form['id'])): ?><div class="row g-2 mb-3"><div class="col-12 col-md-4"><label class="form-label">Payment<select class="form-select" name="payment_status" id="payment-status"><?php foreach(['unpaid'=>'Unpaid','full'=>'Full payment','partial'=>'Partial payment'] as $value=>$label): ?><option value="<?=$value?>" <?=($form['payment_status']??'unpaid')===$value?'selected':''?>><?=$label?></option><?php endforeach; ?></select></label></div><div class="col-6 col-md-4" id="partial-field"><label class="form-label">Paid Rs.<input class="form-control" type="number" min="0.01" step="0.01" name="payment_amount" value="<?=e($form['payment_amount']??'')?>"></label></div><div class="col-6 col-md-4"><label class="form-label">Payment method<select class="form-select" name="payment_method"><?php foreach(['Cash','Bank Transfer','JazzCash','Easypaisa','Cheque','Other'] as $method): ?><option <?=($form['payment_method']??'Cash')===$method?'selected':''?>><?=e($method)?></option><?php endforeach; ?></select></label></div></div><?php endif; ?>
-<label class="form-label d-block">Notes<textarea class="form-control" name="notes" rows="2"><?=e($form['notes']??'')?></textarea></label><label class="form-label d-block">Bill attachment (optional)<input class="form-control" type="file" name="attachment" accept=".jpg,.jpeg,.png,.webp,.pdf"></label><div class="d-flex gap-2 flex-wrap"><button class="btn btn-primary">Save expense</button><button class="btn btn-outline-primary" name="another" value="1">Save and add another</button><a class="btn btn-outline-secondary" href="?page=expenses">Back</a></div></form></div></div>
-<template id="line-template"><?php $renderLine(['quantity'=>'1','rate'=>'0','rate_basis'=>'1'],'NEW'); ?></template>
-<script>window.expenseData=<?=json_encode(['items'=>$items,'lastRates'=>$lastRates,'conversions'=>rows('SELECT * FROM unit_conversions'),'activeWorkIds'=>array_column(array_filter($works,static fn($w)=>(bool)$w['active']),'id')], JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT)?>;</script><script src="assets/expenses.js" defer></script>
+<form method="post" enctype="multipart/form-data" id="expense-form" class="ef-form" data-paid="<?=e($alreadyPaid)?>"><?=csrf()?><input type="hidden" name="action" value="save"><input type="hidden" name="id" value="<?=e($form['id']??0)?>">
+<div class="ef-main">
+    <section class="ef-items" aria-labelledby="ef-items-title"><div class="ef-section-heading"><div><span class="ef-eyebrow">01 · PURCHASE</span><h2 id="ef-items-title">What did you buy?</h2></div><span id="ef-item-count" class="ef-item-count">1 item</span></div>
+    <?php if($recentItems): ?><div class="ef-recent"><span>Recent</span><div><?php foreach($recentItems as $r): ?><button class="ef-recent-button recent-item" type="button" data-item="<?=e($r['item_id'])?>"><?=e($r['description'])?></button><?php endforeach; ?></div></div><?php endif; ?>
+    <div id="expense-lines"><?php foreach($formLines as $index=>$line)$renderLine($line,$index); ?></div><button class="ef-add-line" id="add-line" type="button"><span aria-hidden="true">＋</span> Add another item</button></section>
+    <section class="ef-panel" aria-labelledby="ef-purchase-info"><div class="ef-section-heading"><div><span class="ef-eyebrow">02 · DETAILS</span><h2 id="ef-purchase-info">Supplier & date</h2></div></div><div class="ef-info-grid"><label class="ef-field" for="ef-supplier"><span>Supplier <small>optional</small></span><select id="ef-supplier" name="contact_id" class="form-select"><option value="">No supplier selected</option><?=options($contacts,$form['contact_id']??null)?></select></label><label class="ef-field" for="ef-date"><span>Purchase date</span><input id="ef-date" required class="form-control" type="date" name="expense_date" value="<?=e($form['expense_date']??date('Y-m-d'))?>"></label></div>
+    <details class="ef-optional" <?=!empty($form['notes'])?'open':''?>><summary>Notes & bill attachment <span>optional</span></summary><div class="ef-optional-content"><label class="ef-field" for="ef-notes"><span>Notes</span><textarea id="ef-notes" class="form-control" name="notes" rows="3" placeholder="Delivery, invoice number, or anything to remember"><?=e($form['notes']??'')?></textarea></label><label class="ef-field" for="ef-attachment"><span>Attach bill or receipt</span><input id="ef-attachment" class="form-control" type="file" name="attachment" accept=".jpg,.jpeg,.png,.webp,.pdf"><small>JPG, PNG, WebP or PDF · up to 5 MB</small></label><?php if($expenseError): ?><p class="ef-help">If you selected a bill, choose it again before saving.</p><?php endif; ?></div></details></section>
+    <a class="ef-back" href="?page=expenses">← Back to expenses</a>
+</div>
+<aside class="ef-summary-column"><section class="ef-summary" aria-labelledby="ef-summary-title"><span class="ef-eyebrow">PURCHASE SUMMARY</span><h2 id="ef-summary-title" class="ef-sr-only">Purchase summary</h2><div id="purchase-total" class="ef-grand-total" aria-live="polite">Rs. 0.00</div><p class="ef-summary-caption" id="ef-summary-caption">Total for this purchase</p><div class="ef-summary-divider"></div>
+<?php if(!$editingExpenseId): ?><fieldset class="ef-payment"><legend>Payment</legend><div class="ef-payment-choices"><?php foreach(['unpaid'=>'Unpaid','full'=>'Paid in full','partial'=>'Part paid'] as $value=>$label): ?><label><input type="radio" name="payment_status" value="<?=$value?>" <?=($form['payment_status']??'unpaid')===$value?'checked':''?>><span><?=$label?></span></label><?php endforeach; ?></div></fieldset><div id="partial-field" class="ef-payment-field"><label class="ef-field" for="ef-payment-amount"><span>Amount paid</span><div class="ef-money-input"><span aria-hidden="true">Rs.</span><input id="ef-payment-amount" class="form-control" type="number" inputmode="decimal" min="0.01" step="0.01" name="payment_amount" value="<?=e($form['payment_amount']??'')?>"></div></label></div><div id="ef-method-field" class="ef-payment-field"><label class="ef-field" for="ef-method"><span>Payment method</span><select id="ef-method" class="form-select" name="payment_method"><?php foreach(['Cash','Bank Transfer','JazzCash','Easypaisa','Cheque','Other'] as $method): ?><option <?=($form['payment_method']??'Cash')===$method?'selected':''?>><?=e($method)?></option><?php endforeach; ?></select></label></div><?php else: ?><p class="ef-help">Payments already allocated to this purchase</p><div class="ef-summary-row"><span>Paid so far</span><strong><?=money($alreadyPaid)?></strong></div><a class="ef-manage-payments" href="?page=payments&expense_id=<?=$editingExpenseId?>">Manage payments ↗</a><?php endif; ?>
+<div class="ef-summary-row ef-outstanding"><span>Remaining to pay</span><strong id="ef-remaining" aria-live="polite">Rs. 0.00</strong></div><p id="ef-payment-note" class="ef-help">You can record a payment later.</p><div id="ef-form-error" class="ef-summary-error" role="status" hidden></div><div class="ef-save-actions"><button class="btn btn-primary" type="submit">Save expense <span aria-hidden="true">→</span></button><button class="btn btn-outline-secondary" type="submit" name="another" value="1">Save & add another</button></div><p class="ef-summary-footnote">Recorded in your selected project.</p></section></aside>
+</form>
+<template id="line-template"><?php $renderLine(['quantity'=>'1','rate'=>'','rate_basis'=>'1'],'NEW'); ?></template>
+<script>window.expenseData=<?=json_encode(['items'=>$items,'lastRates'=>$lastRates,'units'=>$units,'conversions'=>rows('SELECT * FROM unit_conversions'),'activeWorkIds'=>array_column(array_filter($works,static fn($w)=>(bool)$w['active']),'id')], JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT)?>;</script><script src="assets/expenses.js?v=<?=filemtime(__DIR__ . '/../assets/expenses.js')?>" defer></script>
 <?php else:
 $list = rows("SELECT ex.*,c.name contact_name,(SELECT COALESCE(SUM(a.amount),0) FROM payment_allocations a WHERE a.expense_id=ex.id) paid,(SELECT GROUP_CONCAT(ei.description SEPARATOR ', ') FROM expense_items ei WHERE ei.expense_id=ex.id) item_names FROM expenses ex LEFT JOIN contacts c ON c.id=ex.contact_id WHERE ex.project_id=? ORDER BY ex.expense_date DESC,ex.id DESC LIMIT 250",[$pid]); ?>
 <div class="table-responsive"><table class="table table-striped"><thead><tr><th>Date / purchase</th><th>Items</th><th>Supplier</th><th>Total</th><th>Paid</th><th>Outstanding</th><th>Status</th></tr></thead><tbody><?php foreach($list as $row): ?><tr><td><a href="?page=expenses&view=<?=$row['id']?>"><?=e($row['expense_date'])?> #<?=$row['id']?></a></td><td><?=e($row['item_names'])?></td><td><?=e($row['contact_name']??'—')?></td><td><?=money($row['total'])?></td><td><?=money($row['paid'])?></td><td><?=money($row['status']==='active'?sub($row['total'],$row['paid']):'0')?></td><td><?=e($row['status'])?></td></tr><?php endforeach; ?><?php if(!$list): ?><tr><td colspan="7">No expenses yet. Add your first purchase.</td></tr><?php endif; ?></tbody></table></div><p class="small text-muted">Latest 250 purchases. Use Reports for complete history.</p>
