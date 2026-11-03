@@ -28,3 +28,8 @@ Verified with disposable MySQL and browser at 1440px, 390px and 320px: four mark
 User explicitly approved one fictional sample save after automatic approval review initially blocked it. Saved local expense #5: 40kg at Rs10400/Mann = Rs10400, paid4000, remaining6400. Invalid large rate rejected without changing stored total; snapshot factor and user inputs retained.
 
 Local preview: http://127.0.0.1:8087 (PHP session 28372); disposable database construction_ui on /private/tmp/construction-ui-mysql.sock, port33077 (MySQL session4655). Ignored config.php points only at that temporary socket; sample data is not hosted/user financial data. Keep these services while preview is needed; remove config.php and stop/delete temporary instance when finished. No production schema changes required. Redesign not deployed. Source requirements in tasks/brief.md; current design plan in tasks/plan.md.
+
+## Searchable dropdown follow-up
+- [x] 13. Add a lightweight searchable select control for long lists and item/contact selectors; match custom styling, support added expense rows and unit filtering, preserve native form submission/validation. Verify browser search, keyboard, programmatic defaults and mobile layout. No automated test files.
+
+Search follow-up complete: bundled Tom Select 2.4.3 + Apache license, no jQuery. Item/contact/target selects and lists of eight or more options gain search. New rows and recent-item defaults stay synchronized; compatible units can return to native controls with labels restored. Verified typed filtering, Enter selection, row add/remove, unit list expansion/contraction and kg/Mann totals; 390px layout/input16px and console clean. No financial records saved for this follow-up.

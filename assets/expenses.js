@@ -3,6 +3,7 @@
     if (!form) return;
     const data = window.expenseData, container = document.querySelector('#expense-lines');
     const get = (line, field) => line.querySelector(`[data-field="${field}"]`);
+    const focusField = (line, field) => { const input = get(line,field); input.tomselect ? input.tomselect.focus() : input.focus(); };
     const number = value => Number(value).toLocaleString('en-PK', {maximumFractionDigits:4});
     const money = value => 'Rs. ' + Number(value).toLocaleString('en-PK', {minimumFractionDigits:2,maximumFractionDigits:2});
     let next = Math.max(0,...[...container.querySelectorAll('[data-field="item_id"]')].map(el => Number(el.name.match(/\[(\d+)\]/)?.[1] || 0))) + 1;
@@ -130,6 +131,7 @@
         message.hidden = !paymentError;
         message.textContent = paymentError;
         document.querySelector('#ef-payment-note').textContent = status === 'full' ? 'A payment will be recorded with this purchase.' : status === 'partial' ? 'The unpaid balance stays outstanding.' : status === 'unpaid' ? 'No payment recorded now. You can add one later.' : 'Existing payments stay linked to this purchase.';
+        document.dispatchEvent(new Event('searchable-selects:refresh'));
         return valid && !paymentError;
     }
     function defaults(line, itemId) {
@@ -160,23 +162,24 @@
         const line = container.lastElementChild;
         if (itemId) defaults(line,itemId);
         calculate();
-        get(line,itemId?'quantity':'item_id').focus();
+        focusField(line,itemId?'quantity':'item_id');
         return line;
     }
     document.querySelector('#add-line').addEventListener('click',() => addLine());
     container.addEventListener('change',event => {
+        if (event.target.closest('.ts-wrapper')) return;
         const line = event.target.closest('.expense-line');
         if (event.target.matches('.item-select')) defaults(line,event.target.value);
         if (event.target.matches('[data-field="rate"], [data-field="rate_unit_id"], [data-field="rate_basis"]')) line.querySelector('.ef-rate-source').textContent='';
         calculate();
     });
-    form.addEventListener('input',calculate);
-    form.addEventListener('change',calculate);
+    form.addEventListener('input',event => { if (!event.target.closest('.ts-wrapper')) calculate(); });
+    form.addEventListener('change',event => { if (!event.target.closest('.ts-wrapper')) calculate(); });
     container.addEventListener('click',event => {
         const button = event.target.closest('.remove-line');
         if (!button || container.children.length < 2) return;
         const line = button.closest('.expense-line'), following = line.nextElementSibling || line.previousElementSibling;
-        line.remove(); calculate(); get(following,'item_id').focus();
+        line.remove(); calculate(); focusField(following,'item_id');
     });
     document.querySelectorAll('.recent-item').forEach(button => button.addEventListener('click',() => {
         const empty = [...container.querySelectorAll('.expense-line')].find(line => !get(line,'item_id').value);
@@ -192,7 +195,7 @@
         if (!calculate()) {
             event.preventDefault();
             const invalid = form.querySelector(':invalid');
-            if (invalid) { invalid.closest('details')?.setAttribute('open',''); invalid.reportValidity(); invalid.focus(); }
+            if (invalid) { invalid.closest('details')?.setAttribute('open',''); invalid.reportValidity(); invalid.tomselect ? invalid.tomselect.focus() : invalid.focus(); }
             else document.querySelector('#ef-form-error').scrollIntoView({block:'center'});
         }
     });

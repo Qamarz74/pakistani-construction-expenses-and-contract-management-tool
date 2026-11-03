@@ -134,8 +134,12 @@ $navLabels = ['dashboard'=>'Overview','expenses'=>'Expenses','payments'=>'Paymen
     <meta name="theme-color" content="#17634d">
     <title><?=e($heading)?> · Home Construction</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="assets/tom-select.css" rel="stylesheet">
     <link href="assets/app.css?v=<?=filemtime(__DIR__.'/assets/app.css')?>" rel="stylesheet">
     <?php if(in_array($page,['dashboard','expenses'],true) && is_file(__DIR__.'/assets/'.$page.'.css')): ?><link href="assets/<?=e($page)?>.css?v=<?=filemtime(__DIR__.'/assets/'.$page.'.css')?>" rel="stylesheet"><?php endif; ?>
+    <link href="assets/searchable-selects.css?v=<?=filemtime(__DIR__.'/assets/searchable-selects.css')?>" rel="stylesheet">
+    <script src="assets/tom-select.js" defer></script>
+    <script src="assets/searchable-selects.js?v=<?=filemtime(__DIR__.'/assets/searchable-selects.js')?>" defer></script>
 </head>
 <body class="app-body page-<?=e($page)?>">
 <a class="skip-link" href="#main-content">Skip to content</a>
