@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/../app/contact-links.php';
 $id = max(0, (int)($_POST['id'] ?? $_GET['id'] ?? $_GET['view'] ?? 0));
 $methods = ['Cash','Bank Transfer','JazzCash','Easypaisa','Cheque','Other'];
 $formError = null;
@@ -34,9 +35,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $amount = decimal($_POST['amount'] ?? '',2,true);
                 $allocated = one('SELECT COALESCE(SUM(amount),0) amount FROM payment_allocations WHERE payment_id=?',[$id])['amount'];
                 if (cmp($amount,$allocated)<0) throw new InvalidArgumentException('Payment amount cannot be less than the amount already applied. Release an allocation below before reducing the payment.');
+                if ($payment['contact_id'] === null && $contact && isset($_POST['attach_supplier'])) attach_missing_supplier('payment', $id, $contact);
                 $allocations = rows('SELECT a.id,e.contact_id expense_contact,c.contact_id contract_contact,a.expense_id FROM payment_allocations a LEFT JOIN expenses e ON e.id=a.expense_id LEFT JOIN contracts c ON c.id=a.contract_id WHERE a.payment_id=?',[$id]);
                 foreach ($allocations as $allocation) {
                     $targetContact = $allocation['expense_id'] ? $allocation['expense_contact'] : $allocation['contract_contact'];
+                    if ($payment['contact_id'] === null && $contact && $targetContact === null) throw new InvalidArgumentException('Select the option to also assign this recipient to linked unassigned purchases and payments.');
                     if ((string)($targetContact ?? '') !== (string)($contact ?? '')) throw new InvalidArgumentException('This recipient does not match the purchases or contracts already paid. Release those allocations below, change the recipient, then apply this same payment again.');
                 }
                 if (!$contact && !$allocations) throw new InvalidArgumentException('Choose a recipient for an unapplied payment.');
@@ -102,6 +105,7 @@ function payment_targets(?int $contact=null, bool $restrict=false): array {
         <h2>Edit payment details</h2><p class="py-help">Changes update this payment. To correct what it pays for, release and reapply the existing payment below.</p>
         <div class="py-form-grid">
             <label class="py-field" for="edit-recipient"><span>Recipient</span><select class="form-select" id="edit-recipient" name="contact_id"><option value="">No supplier (purchase only)</option><?=options($contacts,$form['contact_id']??null)?></select></label>
+            <?php if ($payment['contact_id'] === null): ?><div class="py-full"><label><input class="form-check-input" type="checkbox" name="attach_supplier" value="1" <?=isset($_POST['attach_supplier'])?'checked':''?>> Also assign this recipient to linked unassigned purchases and payments</label><p class="py-help">Required when linked purchases have no supplier. Includes other unassigned records connected through shared payments. Existing suppliers must match; amounts and allocations stay unchanged.</p></div><?php endif ?>
             <label class="py-field" for="edit-date"><span>Payment date</span><input class="form-control" id="edit-date" type="date" name="payment_date" value="<?=e($form['payment_date']??'')?>" required></label>
             <label class="py-field" for="edit-amount"><span>Payment amount (PKR)</span><input class="form-control" id="edit-amount" type="number" inputmode="decimal" min="0.01" step="0.01" name="amount" value="<?=e($form['amount']??'')?>" required><small>Already applied: <?=money($allocated)?>. Release allocations before entering a lower amount.</small></label>
             <label class="py-field" for="edit-method"><span>Payment method</span><select class="form-select" id="edit-method" name="method"><?php foreach ($methods as $method): ?><option <?=($form['method']??'')===$method?'selected':''?>><?=e($method)?></option><?php endforeach ?></select></label>

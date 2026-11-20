@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__.'/../app/expense-corrections.php';
+require_once __DIR__.'/../app/contact-links.php';
 $pid = project_id();
 $action = $_POST['action'] ?? '';
 $expenseError = null;
@@ -35,7 +36,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $contact = (int) ($_POST['contact_id'] ?? 0) ?: null;
             if ($contact && !one('SELECT id FROM contacts WHERE id=?', [$contact])) throw new RuntimeException('Select a valid supplier.');
             $allocated = $id ? one('SELECT COALESCE(SUM(amount),0) amount FROM payment_allocations WHERE expense_id=?', [$id])['amount'] : '0';
-            if ($existing && cmp($allocated, '0') > 0 && $contact !== ($existing['contact_id'] === null ? null : (int)$existing['contact_id'])) throw new RuntimeException('Remove payment allocations before changing supplier.');
+            if ($existing && $existing['contact_id'] === null && $contact && isset($_POST['attach_supplier'])) {
+                attach_missing_supplier('expense', $id, $contact);
+            } elseif ($existing && cmp($allocated, '0') > 0 && $contact !== ($existing['contact_id'] === null ? null : (int)$existing['contact_id'])) {
+                throw new RuntimeException('To attach a missing supplier, select the option to also update linked unassigned records. To replace an existing supplier, release payment allocations first.');
+            }
             $oldLines = [];
             if ($id) foreach (rows('SELECT * FROM expense_items WHERE expense_id=?', [$id]) as $old) $oldLines[$old['id']] = $old;
             $lines = [];
@@ -193,6 +198,7 @@ $renderLine = static function($line,$index) use($items,$units,$works,$categories
     <?php if($recentItems): ?><div class="ef-recent"><span>Recent</span><div><?php foreach($recentItems as $r): ?><button class="ef-recent-button recent-item" type="button" data-item="<?=e($r['item_id'])?>"><?=e($r['description'])?></button><?php endforeach; ?></div></div><?php endif; ?>
     <div id="expense-lines"><?php foreach($formLines as $index=>$line)$renderLine($line,$index); ?></div><button class="ef-add-line" id="add-line" type="button"><span aria-hidden="true">＋</span> Add another item</button></section>
     <section class="ef-panel" aria-labelledby="ef-purchase-info"><div class="ef-section-heading"><div><span class="ef-eyebrow">02 · DETAILS</span><h2 id="ef-purchase-info">Supplier & date</h2></div></div><div class="ef-info-grid"><label class="ef-field" for="ef-supplier"><span>Supplier <small>optional</small></span><select id="ef-supplier" name="contact_id" class="form-select"><option value="">No supplier selected</option><?=options($contacts,$form['contact_id']??null)?></select></label><label class="ef-field" for="ef-date"><span>Purchase date</span><input id="ef-date" required class="form-control" type="date" name="expense_date" value="<?=e($form['expense_date']??date('Y-m-d'))?>"></label></div>
+    <?php if ($editing && $editing['contact_id'] === null): ?><div class="mt-3"><label class="ef-check"><input class="form-check-input" type="checkbox" name="attach_supplier" value="1" <?=isset($_POST['attach_supplier'])?'checked':''?>> Also assign this supplier to linked unassigned purchases and payments</label><p class="ef-help">Required when this purchase already has payments. Shared payments also link their other unassigned purchases. Existing suppliers must match; amounts and allocations stay unchanged.</p></div><?php endif ?>
     <details class="ef-optional" <?=!empty($form['notes'])?'open':''?>><summary>Notes & bill attachment <span>optional</span></summary><div class="ef-optional-content"><label class="ef-field" for="ef-notes"><span>Notes</span><textarea id="ef-notes" class="form-control" name="notes" rows="3" placeholder="Delivery, invoice number, or anything to remember"><?=e($form['notes']??'')?></textarea></label><label class="ef-field" for="ef-attachment"><span>Attach bill or receipt</span><input id="ef-attachment" class="form-control" type="file" name="attachment" accept=".jpg,.jpeg,.png,.webp,.pdf"><small>JPG, PNG, WebP or PDF · up to 5 MB</small></label><?php if($expenseError): ?><p class="ef-help">If you selected a bill, choose it again before saving.</p><?php endif; ?></div></details></section>
     <a class="ef-back" href="?page=expenses">← Back to expenses</a>
 </div>

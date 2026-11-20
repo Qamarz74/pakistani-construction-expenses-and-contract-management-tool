@@ -1,25 +1,40 @@
 <?php
+require_once __DIR__.'/../app/contact-links.php';
+$contactError = null;
 $pid = project_id();
 $id = max(0,(int)($_GET['id']??0));
 $editId = max(0,(int)($_GET['edit']??0));
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_post_csrf();
     $editId = max(0,(int)($_POST['id']??0));
-    $name = trim($_POST['name']??'');
-    $phone = trim($_POST['phone']??'');
-    $type = $_POST['type']??'';
-    $notes = trim($_POST['notes']??'');
-    if ($name===''||strlen($name)>150||strlen($phone)>50) throw new RuntimeException('Name required (maximum 150 characters); phone maximum 50 characters.');
-    if (!in_array($type,contact_types(),true)) throw new RuntimeException('Invalid contact type.');
-    if ($editId) {
-        if (!one('SELECT id FROM contacts WHERE id=?',[$editId])) throw new RuntimeException('Contact not found.');
-        run('UPDATE contacts SET name=?,phone=?,type=?,notes=? WHERE id=?',[$name,$phone,$type,$notes,$editId]);
-    } else {
-        run('INSERT INTO contacts (name,phone,type,notes) VALUES (?,?,?,?)',[$name,$phone,$type,$notes]);
-        $editId = (int)db()->lastInsertId();
+    try {
+        if (($_POST['action'] ?? 'save') === 'remove') {
+            db()->beginTransaction();
+            remove_unused_contact($editId);
+            db()->commit();
+            flash('Unused contact removed.');
+            redirect('index.php?page=contacts');
+        }
+        $name = trim($_POST['name']??'');
+        $phone = trim($_POST['phone']??'');
+        $type = $_POST['type']??'';
+        $notes = trim($_POST['notes']??'');
+        if ($name===''||strlen($name)>150||strlen($phone)>50) throw new RuntimeException('Name required (maximum 150 characters); phone maximum 50 characters.');
+        if (!in_array($type,contact_types(),true)) throw new RuntimeException('Invalid contact type.');
+        if ($editId) {
+            if (!one('SELECT id FROM contacts WHERE id=?',[$editId])) throw new RuntimeException('Contact not found.');
+            run('UPDATE contacts SET name=?,phone=?,type=?,notes=? WHERE id=?',[$name,$phone,$type,$notes,$editId]);
+        } else {
+            run('INSERT INTO contacts (name,phone,type,notes) VALUES (?,?,?,?)',[$name,$phone,$type,$notes]);
+            $editId = (int)db()->lastInsertId();
+        }
+        flash('Contact saved.');
+        redirect('index.php?page=contacts&id='.$editId);
+    } catch (Throwable $ex) {
+        if (db()->inTransaction()) db()->rollBack();
+        if ($ex instanceof PDOException) error_log((string)$ex);
+        $contactError = $ex instanceof PDOException ? 'Unable to save this contact. Linked history may prevent removal; no changes were saved.' : $ex->getMessage();
     }
-    flash('Contact saved.');
-    redirect('index.php?page=contacts&id='.$editId);
 }
 $edit = $editId ? one('SELECT * FROM contacts WHERE id=?',[$editId]) : null;
 if ($editId&&!$edit) throw new RuntimeException('Contact not found.');
@@ -27,6 +42,7 @@ $contact = $id ? one('SELECT * FROM contacts WHERE id=?',[$id]) : null;
 if ($id&&!$contact) throw new RuntimeException('Contact not found.');
 $contacts = rows('SELECT * FROM contacts ORDER BY name');
 ?>
+<?php if ($contactError): ?><div class="alert alert-danger" role="alert"><?= e($contactError) ?></div><?php endif ?>
 <div class="row g-4"><div class="col-lg-4"><div class="card"><div class="card-body"><h2 class="h5"><?= $edit?'Edit contact':'Add contact' ?></h2>
 <form method="post"><?= csrf() ?><input type="hidden" name="id" value="<?= (int)($edit['id']??0) ?>">
 <label class="form-label" for="name">Name</label><input class="form-control mb-3" id="name" name="name" value="<?= e($edit['name']??'') ?>" required maxlength="150">
@@ -35,7 +51,13 @@ $contacts = rows('SELECT * FROM contacts ORDER BY name');
 <p class="small text-muted">Choose Other when none fit. Add their role or trade in Notes.</p>
 <label class="form-label" for="notes">Notes</label><textarea class="form-control mb-3" id="notes" name="notes"><?= e($edit['notes']??'') ?></textarea>
 <button class="btn btn-primary">Save contact</button> <?php if ($edit): ?><a class="btn btn-outline-secondary" href="index.php?page=contacts">Clear</a><?php endif ?>
-</form></div></div></div>
+</form>
+<?php if ($edit): $canRemove = contact_history_count((int)$edit['id']) === 0; ?>
+<hr><h3 class="h6">Remove person / business</h3>
+<p class="small text-muted"><?= $canRemove ? 'No purchases, payments or contracts reference this contact in any project.' : 'This contact has purchases, payments or contracts in one or more projects, including history. Keep them to preserve those records.' ?></p>
+<form method="post"><?= csrf() ?><input type="hidden" name="id" value="<?= (int)$edit['id'] ?>"><button class="btn btn-outline-danger" name="action" value="remove" <?= $canRemove?'':'disabled' ?> onclick="return confirm('Permanently remove this unused contact?')">Remove contact</button></form>
+<?php endif ?>
+</div></div></div>
 <div class="col-lg-8"><div class="table-responsive"><table class="table table-striped"><thead><tr><th>Name</th><th>Phone</th><th>Type</th><th></th></tr></thead><tbody>
 <?php foreach ($contacts as $entry): ?><tr><td><a href="index.php?page=contacts&amp;id=<?= (int)$entry['id'] ?>"><?= e($entry['name']) ?></a></td><td><?= e($entry['phone']) ?></td><td><?= e($entry['type']) ?></td><td><a class="btn btn-sm btn-outline-primary" href="index.php?page=contacts&amp;edit=<?= (int)$entry['id'] ?>">Edit</a></td></tr><?php endforeach ?>
 <?php if (!$contacts): ?><tr><td colspan="4">No contacts yet.</td></tr><?php endif ?>

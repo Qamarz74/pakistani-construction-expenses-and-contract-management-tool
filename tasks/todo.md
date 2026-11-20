@@ -87,3 +87,10 @@ Grouping verified in PHP and JavaScript: 583360 ->5,83,360; 11113750 ->1,11,13,7
 - [x] 31. Display quantities/pricing bases with up to two decimals, trimming trailing zeros and using lakh/crore grouping; preserve stored precision and editable values.
 
 Quantity display verified in PHP for integers, trailing zeros, two-decimal rounding and large grouped values. Updated purchase details, contract quantity, material/rate reports, item pricing bases and live expense equations. PHP lint, JS syntax and diff checks passed. Display-only: input values, schema, saved quantities, conversion factors and accounting calculations unchanged.
+
+## Contact removal and late supplier assignment
+- [x] 32. Remove unused contacts with global history checks; keep referenced people and explain why.
+- [x] 33. Let users attach missing suppliers from purchase/payment editors, explicitly including connected unassigned records; reject conflicting suppliers and preserve money/allocations.
+- [x] 34. Verify local corrections, rollback, project boundaries and contact removal. No new automated test files or production changes.
+
+Verified supplier assignment from both payment and purchase editors using fictional local records. Explicit checkbox includes connected unassigned purchases/payments; existing suppliers must agree. Rolled-back checks cover shared allocations, conflicts without partial writes, project boundaries, unused deletion and cancelled payment history in another project. Browser verified protected contact button, successful unused removal, both supplier saves and no console errors. Amounts and allocations unchanged. Temporary verification fixtures removed; PHP lint/diff checks passed. No schema change, production writes, commit or push.
