@@ -61,7 +61,7 @@ function e(mixed $v): string
 function money(mixed $v): string
 {
     $whole = rounded((string)($v ?? '0'), 0);
-    return 'Rs. ' . preg_replace('/\B(?=(\d{3})+(?!\d))/', ',', $whole);
+    return 'Rs. ' . preg_replace('/(\d)(?=(?:\d{2})*\d{3}$)/', '$1,', $whole);
 }
 function redirect(string $url): never
 {

@@ -77,3 +77,8 @@ Local preview: PHP server on127.0.0.1:8087; MySQL local datadir/private/tmp/cons
 - [x] 29. Display currency as rounded whole rupees across PHP views and live expense summaries; preserve stored decimals, inputs and accounting calculations. Verify formatting and syntax.
 
 Whole-rupee display verified: PHP/JS formatting agree for zero, positive, negative and half-rupee rounding; large decimal strings retain precision. Local Dashboard render contains no decimal currency amounts; PHP/JS syntax and diff checks pass. Display-only change: decimal input values, stored amounts and calculations unchanged. No schema/data writes; not deployed.
+
+## Lakh/crore number grouping
+- [x] 30. Format displayed currency with a three-digit final group and two-digit groups to its left; match live expense summaries, preserve whole-rupee rounding and stored amounts.
+
+Grouping verified in PHP and JavaScript: 583360 ->5,83,360; 11113750 ->1,11,13,750; long and negative amounts group correctly. Currency remains rounded to whole rupees; persisted decimals/calculations unchanged. PHP/JS syntax and diff checks pass. Display-only change, no database writes or schema upgrade.

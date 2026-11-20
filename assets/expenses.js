@@ -4,8 +4,8 @@
     const data = window.expenseData, container = document.querySelector('#expense-lines');
     const get = (line, field) => line.querySelector(`[data-field="${field}"]`);
     const focusField = (line, field) => { const input = get(line,field); input.tomselect ? input.tomselect.focus() : input.focus(); };
-    const number = value => Number(value).toLocaleString('en-PK', {maximumFractionDigits:4});
-    const money = value => 'Rs. ' + Number(value).toLocaleString('en-PK', {minimumFractionDigits:0,maximumFractionDigits:0});
+    const number = value => Number(value).toLocaleString('en-IN', {maximumFractionDigits:4});
+    const money = value => 'Rs. ' + Number(value).toLocaleString('en-IN', {minimumFractionDigits:0,maximumFractionDigits:0});
     let next = Math.max(0,...[...container.querySelectorAll('[data-field="item_id"]')].map(el => Number(el.name.match(/\[(\d+)\]/)?.[1] || 0))) + 1;
     const originalUnitOptions = new WeakMap();
     function factor(from, to) {
