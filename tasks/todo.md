@@ -62,3 +62,13 @@ Verified both correction modes inside rolled-back transactions: approved work pr
 - [x] 24. Verify Dashboard amount formatting; preserve decimal precision and prevent phone amounts breaking across lines. Push code only after checks; do not run SQL upgrades or modify any saved data.
 
 Dashboard display verified before push: currency formatting now rounds/groups decimal strings without floating-point conversion (including 9999999999999999.99, negative values, zero and half-cent rounding). Kept existing comma grouping and two decimals. Dashboard money stays on one line; phone balance/cost layouts provide wider amount space. Browser checks at320/390/768px showed no document overflow, console errors or split currency lines. PHP lint/diff checks passed. No database writes, upgrades or data migrations performed for this follow-up.
+
+## Contract milestones — 20 November 2026
+- [x] 25. Keep full-construction agreement independent of stages; classify each approved-work entry by Foundation, Grey Structure, etc. Existing payments stay contract-level.
+- [x] 26. Update cost correction, Dashboard work breakdown and Reports to use entry stages; stage-filtered reports must not invent per-stage payment balances.
+- [x] 27. Add non-destructive optional schema upgrade with pre-upgrade compatibility, verify local classification/unchanged totals, preserve live contract pending deployment.
+
+Milestone support verified locally: additive nullable contract_work_costs.work_type_id, repeat-safe upgrade leaves existing stages unassigned; pre-upgrade contracts/dashboard/reports render without referencing the missing column. Local HTTP verified same agreement with Foundation and Grey Structure entries, correct stage filters, invalid stage rejection and contract-level payments. Browser edited a fictional work entry stage to Foundation; monetary totals and legacy agreement work_type_id remained unchanged. 320/390/768px layouts fit without document overflow; no app console errors. PHP lint and diff checks pass. No new automated tests or test files.
+
+Local preview: PHP server on127.0.0.1:8087; MySQL local datadir/private/tmp/construction-corrections-mysql, socket/private/tmp/construction-ui-mysql.sock, port33077. Existing config.php remains ignored. Live agreement editor was exited without saving; no live classification or schema was changed for milestones. Deployment requires database/upgrade-contract-work-stages.sql, then existing approved-work entries can be explicitly assigned to Foundation. Do not relabel the entire construction agreement as a single stage.
+- [ ] 28. Deploy milestone code/upgrade and classify the live approved-work entries as Foundation; preserve the overall construction agreement and all monetary values. Pending deployment.

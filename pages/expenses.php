@@ -16,7 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($action === 'move_contract') {
             $contractId=(int)($_POST['contract_id']??0);
             $mode=(string)($_POST['correction_mode']??'');
-            move_expense_to_contract($id,$contractId,$mode);
+            move_expense_to_contract($id,$contractId,$mode,(int)($_POST['cost_work_type_id']??0)?:null);
             db()->commit();
             flash('Expense corrected. Existing payments were moved; no new payment was created.');
             redirect('?page=contracts&view='.$contractId);

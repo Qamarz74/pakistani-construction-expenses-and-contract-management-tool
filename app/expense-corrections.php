@@ -1,6 +1,6 @@
 <?php
 // Caller owns the transaction and project lock, shared with all financial writes.
-function move_expense_to_contract(int $expenseId, int $contractId, string $mode): void
+function move_expense_to_contract(int $expenseId, int $contractId, string $mode, ?int $workTypeId = null): void
 {
     if (!db()->inTransaction()) throw new LogicException('Correction requires a transaction.');
     if (!in_array($mode,['approved','advance'],true)) throw new InvalidArgumentException('Choose approved work or advance payment.');
@@ -19,7 +19,10 @@ function move_expense_to_contract(int $expenseId, int $contractId, string $mode)
     if ($mode==='approved') {
         $recognized=one("SELECT COALESCE(SUM(amount),0) amount FROM contract_work_costs WHERE contract_id=? AND status='active'",[$contractId])['amount'];
         if (cmp($expense['total'],'0')<=0 || cmp(add($recognized,$expense['total']),$contract['agreed_amount'])>0) throw new InvalidArgumentException('This cost exceeds the contract’s remaining agreed amount. Adjust the contract agreement first, or choose advance payment if no work cost was incurred.');
-        run('INSERT INTO contract_work_costs(contract_id,cost_date,amount,notes) VALUES(?,?,?,?)',[$contractId,$expense['expense_date'],$expense['total'],'Moved from purchase #'.$expenseId.'. '.$expense['notes']]);
+        if ($workTypeId && (!contract_work_stages_enabled() || !one('SELECT id FROM work_types WHERE id=? AND active=1',[$workTypeId]))) throw new InvalidArgumentException('Choose an active work stage.');
+        $costNotes='Moved from purchase #'.$expenseId.'. '.$expense['notes'];
+        if(contract_work_stages_enabled()) run('INSERT INTO contract_work_costs(contract_id,work_type_id,cost_date,amount,notes) VALUES(?,?,?,?,?)',[$contractId,$workTypeId,$expense['expense_date'],$expense['total'],$costNotes]);
+        else run('INSERT INTO contract_work_costs(contract_id,cost_date,amount,notes) VALUES(?,?,?,?)',[$contractId,$expense['expense_date'],$expense['total'],$costNotes]);
     }
     foreach($allocations as $allocation) {
         run('DELETE FROM payment_allocations WHERE id=? AND expense_id=?',[$allocation['id'],$expenseId]);

@@ -23,6 +23,12 @@ if (!is_file($configFile)) {
     exit('Copy config.example.php to config.php, configure MySQL, import database/schema.sql and database/seed.sql, then run php setup.php admin.');
 }
 $config = require $configFile;
+function contract_work_stages_enabled(): bool
+{
+    static $enabled;
+    return $enabled ??= one("SHOW COLUMNS FROM contract_work_costs LIKE 'work_type_id'") !== null;
+}
+
 function contact_types(): array
 {
     return ['Supplier','Contractor','Both','Labourer','Mason','Electrician','Plumber','Carpenter','Painter','Transporter','Other'];

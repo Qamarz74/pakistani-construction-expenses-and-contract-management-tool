@@ -12,6 +12,8 @@ Existing installations: import `database/upgrade-contact-types.sql` before using
 
 Optional naming update for existing installations: import `database/upgrade-contract-labels.sql` to rename the shipped Labour / Theka item/category and Theka unit to Contract labels. Historical purchase snapshots remain unchanged.
 
+To classify approved contract work by stage, import `database/upgrade-contract-work-stages.sql`. This adds a nullable stage field only; existing costs remain unassigned until edited. Payments and agreements are unchanged. The application remains usable before this upgrade.
+
 For local use: `php -S 127.0.0.1:8080 router.php`, then open http://127.0.0.1:8080. Always include `router.php` so private files cannot be served directly.
 
 Select a project, add contacts, then use **Add expense**. Bricks default to rates per 1,000 pieces; Sariya uses Mann (40 kg). Configure other units/conversions under Settings; variable trolley/dumper capacities never convert automatically. Saved purchases retain their original units and rates.
