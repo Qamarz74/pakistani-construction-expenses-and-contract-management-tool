@@ -60,8 +60,8 @@ function e(mixed $v): string
 }
 function money(mixed $v): string
 {
-    [$whole,$cents] = explode('.', rounded((string)($v ?? '0'), 2));
-    return 'Rs. ' . preg_replace('/\B(?=(\d{3})+(?!\d))/', ',', $whole) . '.' . $cents;
+    $whole = rounded((string)($v ?? '0'), 0);
+    return 'Rs. ' . preg_replace('/\B(?=(\d{3})+(?!\d))/', ',', $whole);
 }
 function redirect(string $url): never
 {

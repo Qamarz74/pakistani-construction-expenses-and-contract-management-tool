@@ -72,3 +72,8 @@ Milestone support verified locally: additive nullable contract_work_costs.work_t
 
 Local preview: PHP server on127.0.0.1:8087; MySQL local datadir/private/tmp/construction-corrections-mysql, socket/private/tmp/construction-ui-mysql.sock, port33077. Existing config.php remains ignored. Live agreement editor was exited without saving; no live classification or schema was changed for milestones. Deployment requires database/upgrade-contract-work-stages.sql, then existing approved-work entries can be explicitly assigned to Foundation. Do not relabel the entire construction agreement as a single stage.
 - [x] 28. Deploy milestone code/upgrade and classify the live approved-work entries as Foundation; preserve the overall construction agreement and all monetary values. User deployed through cPanel and applied the SQL upgrade with PDO. Verified live stage support and assigned both existing approved-work entries to Foundation; agreement, work dates/amounts/notes, payments and Dashboard totals preserved.
+
+## Whole-rupee display
+- [x] 29. Display currency as rounded whole rupees across PHP views and live expense summaries; preserve stored decimals, inputs and accounting calculations. Verify formatting and syntax.
+
+Whole-rupee display verified: PHP/JS formatting agree for zero, positive, negative and half-rupee rounding; large decimal strings retain precision. Local Dashboard render contains no decimal currency amounts; PHP/JS syntax and diff checks pass. Display-only change: decimal input values, stored amounts and calculations unchanged. No schema/data writes; not deployed.
