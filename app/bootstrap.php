@@ -54,7 +54,8 @@ function e(mixed $v): string
 }
 function money(mixed $v): string
 {
-    return 'Rs. ' . number_format((float)$v, 2);
+    [$whole,$cents] = explode('.', rounded((string)($v ?? '0'), 2));
+    return 'Rs. ' . preg_replace('/\B(?=(\d{3})+(?!\d))/', ',', $whole) . '.' . $cents;
 }
 function redirect(string $url): never
 {
