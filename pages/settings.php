@@ -84,10 +84,10 @@ $itemCategories = array_values(array_filter($categories, fn($row) => $row['activ
 $itemQuantityUnits = array_values(array_filter($units, fn($row) => $row['active'] || $row['id'] == ($edit['unit_id'] ?? 0)));
 $itemRateUnits = array_values(array_filter($units, fn($row) => $row['active'] || $row['id'] == ($edit['rate_unit_id'] ?? 0)));
 ?>
-<h1 class="h3">Settings</h1>
+<p class="text-muted">Add and edit your categories, items, contacts and pricing units here. Changes to defaults do not rewrite saved purchase details.</p>
 <ul class="nav nav-tabs mb-3 flex-wrap"><?php foreach ($tabs as $key=>$label): ?><li class="nav-item"><a class="nav-link <?= $tab===$key?'active':'' ?>" href="index.php?page=settings&amp;tab=<?= e($key) ?>"><?= e($label) ?></a></li><?php endforeach ?></ul>
 <div class="row g-4"><div class="col-lg-5"><div class="card"><div class="card-body">
-<h2 class="h5"><?= $edit?'Edit':'Add' ?> <?= e($tabs[$tab]) ?></h2>
+<h2 class="h5"><?= $edit?'Edit':'Add' ?> <?= e(['projects'=>'project','work_types'=>'work type','categories'=>'category','units'=>'unit','items'=>'item','conversions'=>'conversion'][$tab]) ?></h2>
 <form method="post"><?= csrf() ?><input type="hidden" name="id" value="<?= e($edit['id']??0) ?>">
 <?php if ($tab==='conversions'): ?>
 <p class="small text-muted">1 source unit = factor × destination unit. Reciprocal conversions work automatically. Only add known capacities; trolley and dumper sizes vary.</p>

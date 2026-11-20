@@ -24,21 +24,21 @@ $workBreakdown = rows("SELECT name,SUM(amount) amount FROM (SELECT t.name,SUM(l.
         <div class="db-overview-top"><span class="db-eyebrow">PROJECT OVERVIEW</span><a class="btn btn-primary db-add" href="index.php?page=expenses&add=1"><span aria-hidden="true">+</span> Add expense</a></div>
         <h2 id="db-recorded-heading" class="db-total-label">Total expenses</h2>
         <p class="db-total"><?=money($recorded)?></p>
-        <p class="db-explanation">Cost of purchases and approved Theka work.</p>
+        <p class="db-explanation">Cost of purchases and approved Contract work.</p>
     </div>
     <dl class="db-balances">
         <div><dt>Total paid out</dt><dd><?=money($paid)?></dd><p>All recorded payments, including advances.</p></div>
         <div><dt>Still owed</dt><dd class="db-owed"><?=money($outstanding)?></dd><p>Unpaid purchases and approved work.</p></div>
     </dl>
     <div class="db-advance-row">
-        <div class="db-advance-main"><div><strong><?php if(bccomp($advance,'0',2)>0): ?><?=money($advance)?> advance available<?php else: ?>No unapplied advances<?php endif ?></strong><?php if(bccomp($advance,'0',2)>0): ?><p>Paid but not yet linked to a purchase or Theka.</p><?php endif ?></div><a class="db-text-link" href="index.php?page=payments">View payments <span aria-hidden="true">↗</span></a></div>
-        <?php if(bccomp($contractBalance['prepaid'],'0',2)>0): ?><p class="db-contract-prepaid">Contract prepayments: <strong><?=money($contractBalance['prepaid'])?></strong> · Applied to a Theka, ahead of its approved work.</p><?php endif ?>
+        <div class="db-advance-main"><div><strong><?php if(bccomp($advance,'0',2)>0): ?><?=money($advance)?> advance available<?php else: ?>No unapplied advances<?php endif ?></strong><?php if(bccomp($advance,'0',2)>0): ?><p>Paid but not yet linked to a purchase or Contract.</p><?php endif ?></div><a class="db-text-link" href="index.php?page=payments">View payments <span aria-hidden="true">↗</span></a></div>
+        <?php if(bccomp($contractBalance['prepaid'],'0',2)>0): ?><p class="db-contract-prepaid">Contract prepayments: <strong><?=money($contractBalance['prepaid'])?></strong> · Applied to a Contract, ahead of its approved work.</p><?php endif ?>
     </div>
 </section>
 <section class="db-cost-overview" aria-label="Cost overview">
     <div><span><?=e(date('F'))?> expenses</span><strong><?=money($month)?></strong><small>Recorded this month</small></div>
     <div><span>Materials</span><strong><?=money($kindTotals['material']??'0')?></strong><small>Materials purchased</small></div>
-    <div><span>Labour &amp; Theka</span><strong><?=money($labour)?></strong><small>Approved work and labour</small></div>
+    <div><span>Labour &amp; Contract</span><strong><?=money($labour)?></strong><small>Approved work and labour</small></div>
 </section>
 <?php require __DIR__.'/dashboard-charts.php'; ?>
 <div class="db-activity-grid">
@@ -48,7 +48,7 @@ $workBreakdown = rows("SELECT name,SUM(amount) amount FROM (SELECT t.name,SUM(l.
     <?php foreach($recent as $r): $title=$r['title'].((int)$r['item_count']>2?' +'.((int)$r['item_count']-2).' more':''); ?>
         <li class="db-record"><div class="db-record-main"><a class="db-record-title" href="index.php?page=<?=e($r['page'])?>&view=<?=(int)$r['id']?>"><?=e($title)?><span class="db-sr-only">, <?=$r['page']==='expenses'?'purchase':'contract'?> #<?=(int)$r['id']?></span></a><p class="db-record-subtitle"><?=e($r['name']??'Supplier not specified')?></p><span class="db-record-state"><?=e($r['record_state'])?></span></div><div class="db-record-side"><strong><?=money($r['amount'])?></strong><time datetime="<?=e($r['date'])?>"><?=e(date('j M Y',strtotime($r['date'])))?></time></div></li>
     <?php endforeach ?></ul>
-    <?php else: ?><div class="db-empty"><span class="db-empty-mark" aria-hidden="true">↗</span><h3>Your first expense starts here</h3><p>Add a purchase using the button above. Materials and approved Theka work will appear here as you record them.</p></div><?php endif ?>
+    <?php else: ?><div class="db-empty"><span class="db-empty-mark" aria-hidden="true">↗</span><h3>Your first expense starts here</h3><p>Add a purchase using the button above. Materials and approved Contract work will appear here as you record them.</p></div><?php endif ?>
 </section>
 <section class="db-activity" aria-labelledby="db-payments-heading">
     <div class="db-section-heading"><div><span class="db-eyebrow">MONEY OUT</span><h2 id="db-payments-heading">Recent payments</h2></div><a class="db-text-link" href="index.php?page=payments">View all<span class="db-sr-only"> payments</span> <span aria-hidden="true">↗</span></a></div>
@@ -62,7 +62,7 @@ $workBreakdown = rows("SELECT name,SUM(amount) amount FROM (SELECT t.name,SUM(l.
 <details class="db-breakdowns">
     <summary><span><strong>Where the money went</strong><span>Expenses by category and work type</span></span><span class="db-disclosure-icon" aria-hidden="true">+</span></summary>
     <div class="db-breakdown-grid">
-        <section aria-labelledby="db-categories-heading"><h2 id="db-categories-heading">By category</h2><dl class="db-breakdown-list"><?php foreach($categoryBreakdown as $r): ?><div><dt><?=e($r['name'])?></dt><dd><?=money($r['amount'])?></dd></div><?php endforeach ?><div><dt>Approved Theka work</dt><dd><?=money($work)?></dd></div></dl></section>
+        <section aria-labelledby="db-categories-heading"><h2 id="db-categories-heading">By category</h2><dl class="db-breakdown-list"><?php foreach($categoryBreakdown as $r): ?><div><dt><?=e($r['name'])?></dt><dd><?=money($r['amount'])?></dd></div><?php endforeach ?><div><dt>Approved Contract work</dt><dd><?=money($work)?></dd></div></dl></section>
         <section aria-labelledby="db-work-heading"><h2 id="db-work-heading">By work type</h2><?php if($workBreakdown): ?><dl class="db-breakdown-list"><?php foreach($workBreakdown as $r): ?><div><dt><?=e($r['name'])?></dt><dd><?=money($r['amount'])?></dd></div><?php endforeach ?></dl><?php else: ?><p class="db-explanation">Work types appear here when you record an expense.</p><?php endif ?></section>
     </div>
     <p class="db-commitment-note">Agreed contract values stay separate from total expenses until work is approved.</p>

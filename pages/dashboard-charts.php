@@ -30,7 +30,7 @@ $axisLabel = static function(float $amount): string {
     return rtrim(rtrim(number_format($amount,$amount>0 && $amount<1?4:2,'.',','),'0'),'.');
 };
 $chartCategories=$categoryBreakdown;
-if (bccomp($work,'0',2)>0) $chartCategories[]=['name'=>'Approved Theka work','amount'=>$work];
+if (bccomp($work,'0',2)>0) $chartCategories[]=['name'=>'Approved Contract work','amount'=>$work];
 usort($chartCategories,static fn($a,$b)=>bccomp($b['amount'],$a['amount'],2));
 $chartCategories=array_values(array_filter($chartCategories,static fn($r)=>bccomp($r['amount'],'0',2)>0));
 if (count($chartCategories)>5) {
@@ -59,7 +59,7 @@ if (count($chartCategories)>5) {
 </section>
 <section class="db-chart" aria-labelledby="db-category-title">
     <div class="db-chart-heading"><div><span class="db-eyebrow">ALL TIME</span><h2 id="db-category-title">Where the money goes</h2></div><a class="db-text-link" href="index.php?page=reports&amp;tab=categories">Details ↗</a></div>
-    <p class="db-chart-description">Share of total expenses, including approved Theka work.</p>
+    <p class="db-chart-description">Share of total expenses, including approved Contract work.</p>
     <?php if($chartCategories && bccomp($recorded,'0',2)>0): ?><ul class="db-category-bars">
         <?php foreach($chartCategories as $row): $share=max(0,min(100,(float)bcdiv(bcmul($row['amount'],'100',4),$recorded,2))); ?>
         <li><div class="db-category-label"><span><?=e($row['name'])?></span><strong><?=money($row['amount'])?></strong></div><div class="db-category-track" aria-hidden="true"><span style="width:<?=$share?>%"></span></div><small><?=number_format($share,1)?>% of expenses</small></li>

@@ -74,7 +74,7 @@ try {
     error_log((string)$ex);
     $error = $ex instanceof PDOException ? 'Database operation failed. Check configuration and server logs.' : $ex->getMessage();
 }
-$titles = ['dashboard' => 'Dashboard', 'expenses' => 'Expenses', 'payments' => 'Payments', 'contracts' => 'Thekas', 'contacts' => 'Contacts', 'reports' => 'Reports', 'settings' => 'Settings', 'login' => 'Login'];
+$titles = ['dashboard' => 'Dashboard', 'expenses' => 'Expenses', 'payments' => 'Payments', 'contracts' => 'Contracts', 'contacts' => 'Contacts', 'reports' => 'Reports', 'settings' => 'Settings', 'login' => 'Login'];
 if (!isset($titles[$page])) {
     http_response_code(404);
     $page = 'dashboard';
@@ -124,7 +124,7 @@ function ui_icon(string $name): string {
     ];
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">'.($paths[$name] ?? $paths['home']).'</svg>';
 }
-$navLabels = ['dashboard'=>'Overview','expenses'=>'Expenses','payments'=>'Payments','contracts'=>'Thekas','contacts'=>'People','reports'=>'Reports','settings'=>'Settings'];
+$navLabels = ['dashboard'=>'Overview','expenses'=>'Expenses','payments'=>'Payments','contracts'=>'Contracts','contacts'=>'People','reports'=>'Reports','settings'=>'Settings'];
 ?>
 <!doctype html>
 <html lang="en">
@@ -136,9 +136,10 @@ $navLabels = ['dashboard'=>'Overview','expenses'=>'Expenses','payments'=>'Paymen
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="assets/tom-select.css" rel="stylesheet">
     <link href="assets/app.css?v=<?=filemtime(__DIR__.'/assets/app.css')?>" rel="stylesheet">
-    <?php if(in_array($page,['dashboard','expenses','reports'],true) && is_file(__DIR__.'/assets/'.$page.'.css')): ?><link href="assets/<?=e($page)?>.css?v=<?=filemtime(__DIR__.'/assets/'.$page.'.css')?>" rel="stylesheet"><?php endif; ?>
+    <?php if(in_array($page,['dashboard','expenses','reports','payments','contracts'],true) && is_file(__DIR__.'/assets/'.$page.'.css')): ?><link href="assets/<?=e($page)?>.css?v=<?=filemtime(__DIR__.'/assets/'.$page.'.css')?>" rel="stylesheet"><?php endif; ?>
     <link href="assets/searchable-selects.css?v=<?=filemtime(__DIR__.'/assets/searchable-selects.css')?>" rel="stylesheet">
     <?php if($page==='reports'): ?><script src="assets/reports.js?v=<?=filemtime(__DIR__.'/assets/reports.js')?>" defer></script><?php endif; ?>
+    <?php if($page==='payments' && is_file(__DIR__.'/assets/payments.js')): ?><script src="assets/payments.js?v=<?=filemtime(__DIR__.'/assets/payments.js')?>" defer></script><?php endif; ?>
     <script src="assets/tom-select.js" defer></script>
     <script src="assets/searchable-selects.js?v=<?=filemtime(__DIR__.'/assets/searchable-selects.js')?>" defer></script>
 </head>
@@ -150,6 +151,7 @@ $navLabels = ['dashboard'=>'Overview','expenses'=>'Expenses','payments'=>'Paymen
         <a class="app-brand" href="index.php"><span class="brand-mark"><?=ui_icon('home')?></span><span>Home<span class="brand-subtitle">CONSTRUCTION</span></span></a>
         <span class="nav-caption">YOUR WORKSPACE</span>
         <nav class="workspace-nav" aria-label="Main"><?php foreach($navLabels as $key=>$label): ?><a class="nav-destination <?=$page===$key?'is-active':''?>" href="index.php?page=<?=e($key)?>" <?=$page===$key?'aria-current="page"':''?>><?=ui_icon($key)?><span><?=e($label)?></span></a><?php endforeach; ?></nav>
+        <a class="nav-destination" href="index.php?page=settings&amp;tab=categories"><?=ui_icon('settings')?><span>Categories &amp; items</span></a>
         <div class="sidebar-bottom"><div class="private-note"><span class="private-dot"></span> Your private construction ledger</div><form method="post" action="index.php?page=logout"><?=csrf()?><button class="sidebar-logout"><?=ui_icon('logout')?>Log out</button></form></div>
     </aside>
     <div class="workspace-main">
