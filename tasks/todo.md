@@ -82,3 +82,8 @@ Whole-rupee display verified: PHP/JS formatting agree for zero, positive, negati
 - [x] 30. Format displayed currency with a three-digit final group and two-digit groups to its left; match live expense summaries, preserve whole-rupee rounding and stored amounts.
 
 Grouping verified in PHP and JavaScript: 583360 ->5,83,360; 11113750 ->1,11,13,750; long and negative amounts group correctly. Currency remains rounded to whole rupees; persisted decimals/calculations unchanged. PHP/JS syntax and diff checks pass. Display-only change, no database writes or schema upgrade.
+
+## Quantity display
+- [x] 31. Display quantities/pricing bases with up to two decimals, trimming trailing zeros and using lakh/crore grouping; preserve stored precision and editable values.
+
+Quantity display verified in PHP for integers, trailing zeros, two-decimal rounding and large grouped values. Updated purchase details, contract quantity, material/rate reports, item pricing bases and live expense equations. PHP lint, JS syntax and diff checks passed. Display-only: input values, schema, saved quantities, conversion factors and accounting calculations unchanged.

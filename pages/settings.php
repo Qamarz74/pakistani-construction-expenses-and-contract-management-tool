@@ -112,7 +112,7 @@ $itemRateUnits = array_values(array_filter($units, fn($row) => $row['active'] ||
 <div class="col-lg-7"><div class="table-responsive"><table class="table table-striped"><thead><tr><th><?= $tab==='conversions'?'Conversion':'Name' ?></th><th>Details</th><th></th></tr></thead><tbody>
 <?php foreach ($records as $record): ?><tr><td><?= e($tab==='conversions'?($unitNames[$record['from_unit_id']].' → '.$unitNames[$record['to_unit_id']]):$record['name']) ?></td><td>
 <?php if ($tab==='conversions'): ?>1 = <?= e($record['factor']) ?>
-<?php elseif ($tab==='items'): ?><?= e($categoryNames[$record['category_id']]) ?><br><?= money($record['default_rate']) ?> / <?= e($record['rate_basis'].' '.$unitNames[$record['rate_unit_id']]) ?><br><small>Quantity: <?= e($unitNames[$record['unit_id']]) ?></small>
+<?php elseif ($tab==='items'): ?><?= e($categoryNames[$record['category_id']]) ?><br><?= money($record['default_rate']) ?> / <?= e(format_quantity($record['rate_basis']).' '.$unitNames[$record['rate_unit_id']]) ?><br><small>Quantity: <?= e($unitNames[$record['unit_id']]) ?></small>
 <?php elseif ($tab==='categories'): ?><?= e(ucfirst($record['kind'])) ?>
 <?php elseif ($tab==='projects'): ?><?= e($record['description']) ?>
 <?php endif ?>

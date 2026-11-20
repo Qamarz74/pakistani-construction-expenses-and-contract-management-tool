@@ -58,6 +58,13 @@ function e(mixed $v): string
 {
     return htmlspecialchars((string)($v ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
+function format_quantity(mixed $value): string
+{
+    [$whole,$fraction] = explode('.', rounded((string)($value ?? '0'), 2));
+    $whole = preg_replace('/(\d)(?=(?:\d{2})*\d{3}$)/', '$1,', $whole);
+    $fraction = rtrim($fraction, '0');
+    return $whole . ($fraction === '' ? '' : '.' . $fraction);
+}
 function money(mixed $v): string
 {
     $whole = rounded((string)($v ?? '0'), 0);
